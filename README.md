@@ -153,6 +153,56 @@ PLATFORM_FEE_PERCENT=10
 - Confirmar que o ingresso virou `paid`.
 - Escanear o QR no celular.
 
+## Checklist de Produção
+
+### Supabase
+
+1. Crie um projeto no Supabase.
+2. Abra o SQL Editor e execute `supabase/schema.sql`.
+3. Em Authentication > URL Configuration:
+   - Site URL: `https://seu-dominio.com`
+   - Redirect URLs: `https://seu-dominio.com/**`
+4. Copie as chaves do projeto:
+   - Project URL -> `NEXT_PUBLIC_SUPABASE_URL`
+   - anon public -> `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - service_role -> `SUPABASE_SERVICE_ROLE_KEY`
+5. Crie seu usuário pelo login do site.
+6. Depois que o usuário existir, rode no SQL Editor:
+
+```sql
+update public.users
+set role = 'admin'
+where email = 'seu-email@dominio.com';
+```
+
+### Mercado Pago
+
+1. Crie uma aplicação no painel de desenvolvedores do Mercado Pago.
+2. Copie o Access Token de produção para `MERCADO_PAGO_ACCESS_TOKEN`.
+3. Configure o webhook da aplicação:
+   - URL: `https://seu-dominio.com/api/webhooks/mercado-pago`
+   - Evento/tópico: `payment`
+4. Copie a chave secreta do webhook para `MERCADO_PAGO_WEBHOOK_SECRET`.
+5. Faça uma compra pequena em produção e confirme no Supabase:
+   - `payments.status = approved`
+   - `tickets.status = paid`
+
+### Vercel
+
+Configure as variáveis em Project Settings > Environment Variables:
+
+```txt
+NEXT_PUBLIC_APP_URL=https://seu-dominio.com
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
+SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
+MERCADO_PAGO_ACCESS_TOKEN=APP_USR-seu-access-token
+MERCADO_PAGO_WEBHOOK_SECRET=sua-chave-secreta-webhook
+PLATFORM_FEE_PERCENT=10
+```
+
+Nunca envie `.env.local`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCADO_PAGO_ACCESS_TOKEN` ou `MERCADO_PAGO_WEBHOOK_SECRET` para o GitHub.
+
 ## Melhorias Futuras
 
 - Carrinho com múltiplos ingressos por compra.

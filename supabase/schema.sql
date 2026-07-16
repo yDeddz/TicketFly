@@ -490,11 +490,9 @@ revoke all on function public.reserve_ticket(uuid, text, text, uuid, text) from 
 revoke all on function public.release_reserved_ticket(uuid) from public, anon, authenticated;
 revoke all on function public.apply_payment_status(uuid, public.payment_status, text, jsonb) from public, anon, authenticated;
 revoke all on function public.perform_checkin(text, uuid, text) from public, anon;
+revoke all on function public.perform_checkin(text, uuid, text) from authenticated;
 
 grant execute on function public.reserve_ticket(uuid, text, text, uuid, text) to service_role;
 grant execute on function public.release_reserved_ticket(uuid) to service_role;
 grant execute on function public.apply_payment_status(uuid, public.payment_status, text, jsonb) to service_role;
-grant execute on function public.perform_checkin(text, uuid, text) to authenticated, service_role;
-update public.users
-set role = 'admin'
-where email = 'ripzwhittez@hotmail.com';
+grant execute on function public.perform_checkin(text, uuid, text) to service_role;

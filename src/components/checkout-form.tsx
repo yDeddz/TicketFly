@@ -16,8 +16,7 @@ export function CheckoutForm({ batches, demoMode = false }: { batches: TicketBat
   const [loading, setLoading] = useState(false);
 
   const selectedBatch = batches.find((batch) => batch.id === batchId);
-  const serviceFee = selectedBatch ? Math.round(selectedBatch.price_cents * 0.08) : 0;
-  const total = selectedBatch ? selectedBatch.price_cents + serviceFee : 0;
+  const total = selectedBatch ? selectedBatch.price_cents : 0;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -116,10 +115,6 @@ export function CheckoutForm({ batches, demoMode = false }: { batches: TicketBat
           <div className="flex items-center justify-between text-white/62">
             <span>{selectedBatch.name}</span>
             <strong className="text-white">{formatCurrency(selectedBatch.price_cents)}</strong>
-          </div>
-          <div className="flex items-center justify-between text-white/62">
-            <span>Taxa de servico</span>
-            <strong className="text-white">{formatCurrency(serviceFee)}</strong>
           </div>
           <div className="flex items-center justify-between border-t border-white/10 pt-3">
             <span>Total</span>
