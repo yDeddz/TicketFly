@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
-  CalendarDays,
   Clapperboard,
   Music2,
   Percent,
@@ -13,8 +12,10 @@ import {
 } from "lucide-react";
 
 import { EventCard } from "@/components/event-card";
+import { FeaturedEventBanner } from "@/components/featured-event-banner";
 import { SectionTitle } from "@/components/section-title";
 import { hasSupabaseConfig } from "@/lib/env";
+import { formatCurrency } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { showcaseEvents } from "@/lib/ticketfly-data";
 import type { EventWithBatches } from "@/types/domain";
@@ -61,6 +62,19 @@ export default async function Home() {
   }
 
   const featured = events.length ? events : showcaseEvents;
+  const hero = featured[0];
+  const heroPrice = hero
+    ? Math.min(...hero.ticket_batches.map((batch) => batch.price_cents), Number.POSITIVE_INFINITY)
+    : Number.POSITIVE_INFINITY;
+  const heroDate = hero
+    ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" })
+        .format(new Date(hero.starts_at))
+        .replace(".", "")
+    : "";
+  const heroLots = hero?.ticket_batches
+    .slice(0, 2)
+    .map((batch) => batch.name)
+    .join(" · ") || "Ingressos";
 
   return (
     <main className="ticket-grid overflow-x-clip">
@@ -126,42 +140,22 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="glass-panel min-w-0 rounded-2xl p-2.5 sm:rounded-[26px] sm:p-3">
-            <div className="relative overflow-hidden rounded-xl sm:rounded-[20px]">
-              <div
-                className="aspect-[4/5] max-h-[22rem] bg-cover bg-center sm:aspect-auto sm:h-[24rem] sm:max-h-none md:h-[26rem] lg:h-[27rem]"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(180deg, rgba(5,5,5,0.02), rgba(5,5,5,0.85)), url(https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1400&q=85)",
-                }}
+          {hero ? (
+            <div className="flex min-w-0 justify-center md:justify-end">
+              <FeaturedEventBanner
+                imageUrl={
+                  hero.cover_image_url ??
+                  "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1080&h=1350&q=85"
+                }
+                title={hero.title}
+                href={`/eventos/${hero.slug}`}
+                dateLabel={heroDate}
+                lotsLabel={heroLots}
+                priceLabel={Number.isFinite(heroPrice) ? formatCurrency(heroPrice) : "Em breve"}
+                aspect="4/5"
               />
-              <div className="absolute inset-x-2.5 top-2.5 flex items-center justify-between sm:inset-x-3 sm:top-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ff1493]/90 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-white sm:px-3 sm:text-[0.7rem]">
-                  <span className="live-dot h-1.5 w-1.5 rounded-full bg-white" />
-                  Ingressos à venda
-                </span>
-              </div>
-              <div className="absolute inset-x-2.5 bottom-2.5 grid gap-2.5 rounded-2xl border border-white/10 bg-black/55 p-3 backdrop-blur-xl sm:inset-x-3 sm:bottom-3 sm:gap-3 sm:rounded-[18px] sm:p-4">
-                <div className="min-w-0">
-                  <p className="text-[0.65rem] font-medium uppercase tracking-wide text-white/50 sm:text-xs">
-                    Em destaque
-                  </p>
-                  <h2 className="mt-0.5 truncate text-xl font-bold tracking-tight sm:mt-1 sm:text-2xl">
-                    Neon Pulse Festival
-                  </h2>
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 text-center text-[0.65rem] text-white/55 sm:gap-2 sm:text-xs">
-                  <Metric icon={<CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />} label="Data" value="20 Jun" />
-                  <Metric icon={<Ticket className="h-3.5 w-3.5 sm:h-4 sm:w-4" />} label="Lotes" value="Pista · VIP" />
-                  <Metric icon={<Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />} label="A partir de" value="R$149" />
-                </div>
-                <Link href="/eventos/neon-pulse-festival" className="neon-button btn h-10 w-full text-sm sm:h-11">
-                  Comprar ingresso
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </section>
 
@@ -248,18 +242,6 @@ function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; 
       </div>
       <h3 className="mt-3 font-semibold text-white sm:mt-4">{title}</h3>
       <p className="mt-1.5 text-sm leading-6 text-white/55 sm:mt-2">{text}</p>
-    </div>
-  );
-}
-
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-white/8 bg-white/[0.03] p-2 sm:rounded-xl sm:p-3">
-      <div className="mx-auto mb-1.5 grid h-7 w-7 place-items-center rounded-lg bg-[#ff1493]/10 text-[#ff9ed2] sm:mb-2 sm:h-8 sm:w-8">
-        {icon}
-      </div>
-      <strong className="block truncate text-sm font-semibold text-white sm:text-base">{value}</strong>
-      <span className="truncate">{label}</span>
     </div>
   );
 }

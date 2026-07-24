@@ -1,40 +1,17 @@
-import { NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { exchangeCodeAndRedirect } from "@/lib/supabase/auth-callback";
 
-function safeNextPath(next: string | null) {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/";
-  }
-  return next;
-}
+export async function GET(request: NextRequest) {
+  const type = new URL(request.url).searchParams.get("type");
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
-  const next = safeNextPath(searchParams.get("next"));
-  const errorDescription = searchParams.get("error_description");
-
-  if (errorDescription) {
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(errorDescription)}`,
-    );
+  // Recovery links sometimes land here without ?next= — send them to the form.
+  if (type === "recovery") {
+    return exchangeCodeAndRedirect(request, {
+      next: "/redefinir-senha",
+      fallbackNext: "/redefinir-senha",
+    });
   }
 
-  if (code) {
-    const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
-    }
-
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent("Link inválido ou expirado. Solicite um novo.")}`,
-    );
-  }
-
-  return NextResponse.redirect(
-    `${origin}/login?error=${encodeURIComponent("Não foi possível validar o link de acesso.")}`,
-  );
+  return exchangeCodeAndRedirect(request);
 }

@@ -15,11 +15,11 @@ export function EventCard({ event }: { event: EventWithBatches }) {
       href={`/eventos/${event.slug}`}
       className="group grid overflow-hidden rounded-lg border border-white/10 bg-[#111014]/86 shadow-[0_22px_70px_rgba(0,0,0,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#ff1493]/55 hover:shadow-[0_0_44px_rgba(255,20,147,0.18)]"
     >
-      <div className="relative h-56 overflow-hidden">
+      <div className="relative aspect-[4/5] overflow-hidden sm:aspect-[3/4]">
         <div
           className="absolute inset-0 bg-cover bg-center transition duration-500 group-hover:scale-105"
           style={{
-            backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.02), rgba(5,5,5,0.82)), url(${event.cover_image_url ?? "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80"})`,
+            backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.02), rgba(5,5,5,0.82)), url(${event.cover_image_url ?? "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1080&h=1350&q=80"})`,
           }}
         />
         <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-[#ff1493]/40 bg-black/58 px-3 py-1 text-xs font-black uppercase text-white backdrop-blur-md">

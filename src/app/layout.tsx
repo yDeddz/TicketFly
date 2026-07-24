@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
+import { AuthRecoveryRedirect } from "@/components/auth-recovery-redirect";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,8 +23,10 @@ export const metadata: Metadata = {
   applicationName: "TicketFly",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   icons: {
-    icon: [{ url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" }],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
   },
   openGraph: {
     title: "TicketFly",
@@ -51,6 +54,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
+        <AuthRecoveryRedirect />
         <AppShell>{children}</AppShell>
       </body>
     </html>

@@ -38,13 +38,68 @@ export function ResetPasswordForm() {
       }
     });
 
-    void supabase.auth.getSession().then(({ data: { session } }) => {
+    async function establishRecoverySession() {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (!active) return;
+
+        url.searchParams.delete("code");
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+
+        if (exchangeError) {
+          setError("Link inválido ou expirado. Solicite um novo.");
+          setReady(true);
+          return;
+        }
+
+        setHasSession(true);
+        setReady(true);
+        return;
+      }
+
+      const hash = window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash;
+      const hashParams = new URLSearchParams(hash);
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
+
+      if (accessToken && refreshToken && type === "recovery") {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (!active) return;
+
+        window.history.replaceState({}, "", url.pathname + url.search);
+
+        if (sessionError) {
+          setError("Link inválido ou expirado. Solicite um novo.");
+          setReady(true);
+          return;
+        }
+
+        setHasSession(true);
+        setReady(true);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!active) return;
+
       if (session) {
         setHasSession(true);
       }
       setReady(true);
-    });
+    }
+
+    void establishRecoverySession();
 
     return () => {
       active = false;

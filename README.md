@@ -171,7 +171,7 @@ Contratos por balada ficam em `organizers` (`fee_threshold_cents`, `fee_percent_
 2. Abra o SQL Editor e execute `supabase/schema.sql`.
 3. Em Authentication > URL Configuration:
    - Site URL: `https://seu-dominio.com`
-   - Redirect URLs: `https://seu-dominio.com/**`
+   - Redirect URLs: `https://seu-dominio.com/**` (inclui `/auth/callback` e `/auth/reset` usados no login e na recuperação de senha)
 4. Copie as chaves do projeto:
    - Project URL -> `NEXT_PUBLIC_SUPABASE_URL`
    - anon public -> `NEXT_PUBLIC_SUPABASE_ANON_KEY`

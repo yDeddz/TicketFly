@@ -14,6 +14,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { SpecialText } from "@/components/ui/special-text";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type AuthMode = "login" | "signup" | "forgot";
@@ -58,7 +59,9 @@ export function LoginForm() {
     const supabase = createSupabaseBrowserClient();
 
     if (mode === "forgot") {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/redefinir-senha")}`;
+      // Dedicated path (no query params) — Supabase appends ?code= and would
+      // otherwise overwrite ?next=, sending the user to home after exchange.
+      const redirectTo = `${window.location.origin}/auth/reset`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
       });
@@ -281,6 +284,16 @@ export function LoginForm() {
           ? "O link de redefinição expira em pouco tempo e só pode ser usado uma vez."
           : "Acesso com e-mail e senha. Sessão mantida no navegador."}
       </p>
+
+      <div className="relative flex justify-center border-t border-white/8 pt-4">
+        <SpecialText
+          delay={0.35}
+          speed={18}
+          className="h-auto text-center text-sm font-semibold tracking-wide text-[#ff9ed2] sm:text-base"
+        >
+          Voe mais alto. Viva Experiências
+        </SpecialText>
+      </div>
     </form>
   );
 }
