@@ -8,6 +8,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const nav = [
   { href: "/organizador", label: "Dashboard" },
   { href: "/organizador/eventos", label: "Eventos" },
+  { href: "/organizador/promotores", label: "Promotores" },
+  { href: "/organizador/cupons", label: "Cupons" },
   { href: "/organizador/ingressos", label: "Ingressos / QR" },
   { href: "/organizador/entradas", label: "Gestão de entrada" },
   { href: "/organizador/pagamentos", label: "Pagamentos" },

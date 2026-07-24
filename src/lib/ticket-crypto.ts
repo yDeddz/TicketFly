@@ -1,9 +1,13 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
 
 const QR_PREFIX = "PP1.";
 const WALLET_PREFIX = "PPW1.";
 const ACCESS_PREFIX = "PPA1.";
+
+/** Alphabet without 0/O/1/I — easy to dictate at the door. */
+const MANUAL_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+export const MANUAL_CODE_LENGTH = 8;
 
 /** Live gate QR lifetime (rotating on ticket screen). */
 export const QR_SESSION_TTL_SECONDS = 90;
@@ -159,7 +163,35 @@ export type ResolvedScan =
       kind: "session" | "wallet";
     }
   | { ok: true; mode: "legacy"; qrToken: string }
+  | { ok: true; mode: "manual"; manualCode: string }
   | { ok: false; reason: "invalid" | "expired" | "malformed" };
+
+/** Generate a short staff-dictation gate code (e.g. AB12CD34). */
+export function generateManualGateCode(length = MANUAL_CODE_LENGTH) {
+  const bytes = randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i += 1) {
+    out += MANUAL_CODE_ALPHABET[bytes[i]! % MANUAL_CODE_ALPHABET.length];
+  }
+  return out;
+}
+
+/** Normalize typed gate code: strip separators, uppercase. */
+export function normalizeManualGateCode(raw: string) {
+  return raw.replace(/[\s\-_.]/g, "").toUpperCase();
+}
+
+export function formatManualGateCode(code: string) {
+  const normalized = normalizeManualGateCode(code);
+  if (normalized.length !== MANUAL_CODE_LENGTH) return normalized;
+  return `${normalized.slice(0, 4)}-${normalized.slice(4)}`;
+}
+
+export function isManualGateCodeShape(raw: string) {
+  const normalized = normalizeManualGateCode(raw);
+  if (normalized.length !== MANUAL_CODE_LENGTH) return false;
+  return [...normalized].every((ch) => MANUAL_CODE_ALPHABET.includes(ch));
+}
 
 /**
  * Resolve a scanned QR payload into ticket binding claims.
@@ -175,6 +207,11 @@ export async function resolveScanPayload(rawInput: string): Promise<ResolvedScan
   // Reject bare UUID — public ticket code is not a check-in credential.
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw)) {
     return { ok: false, reason: "invalid" };
+  }
+
+  // Short rotating gate code for staff typing when camera fails.
+  if (isManualGateCodeShape(raw)) {
+    return { ok: true, mode: "manual", manualCode: normalizeManualGateCode(raw) };
   }
 
   if (raw.startsWith(QR_PREFIX) || raw.startsWith(WALLET_PREFIX)) {

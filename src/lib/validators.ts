@@ -6,12 +6,95 @@ export const checkoutSchema = z.object({
   buyerName: z.string().trim().min(2).max(120).optional(),
   buyerEmail: z.string().trim().email().max(160).optional(),
   promoterCode: z.string().trim().max(40).optional().or(z.literal("")),
+  couponCode: z.string().trim().max(40).optional().or(z.literal("")),
   insuranceSelected: z.boolean().optional().default(false),
 });
 
+export const promoterSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  code: z
+    .string()
+    .trim()
+    .min(2)
+    .max(40)
+    .regex(/^[a-zA-Z0-9_-]+$/, "Use apenas letras, números, _ ou -"),
+  commissionPercent: z.coerce.number().min(0).max(50).default(5),
+  isActive: z.boolean().optional().default(true),
+});
+
+export const promoterUpdateSchema = promoterSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+export const couponSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .min(2)
+      .max(40)
+      .regex(/^[a-zA-Z0-9_-]+$/, "Use apenas letras, números, _ ou -"),
+    description: z.string().trim().max(240).optional().or(z.literal("")),
+    discountType: z.enum(["percent", "fixed"]),
+    discountValue: z.coerce.number().positive(),
+    eventId: z.string().uuid().optional().nullable().or(z.literal("")),
+    promoterId: z.string().uuid().optional().nullable().or(z.literal("")),
+    maxUses: z.coerce.number().int().positive().optional().nullable().or(z.literal("")),
+    startsAt: z.string().datetime().optional().or(z.literal("")),
+    endsAt: z.string().datetime().optional().or(z.literal("")),
+    isActive: z.boolean().optional().default(true),
+  })
+  .superRefine((data, ctx) => {
+    if (data.discountType === "percent" && data.discountValue > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Desconto percentual máximo é 100%",
+        path: ["discountValue"],
+      });
+    }
+    if (data.discountType === "fixed" && !Number.isInteger(data.discountValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Desconto fixo deve ser em centavos (inteiro)",
+        path: ["discountValue"],
+      });
+    }
+    if (data.startsAt && data.endsAt && new Date(data.endsAt) <= new Date(data.startsAt)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Data final deve ser após o início",
+        path: ["endsAt"],
+      });
+    }
+  });
+
+export const couponUpdateSchema = z
+  .object({
+    description: z.string().trim().max(240).optional().nullable().or(z.literal("")),
+    discountType: z.enum(["percent", "fixed"]).optional(),
+    discountValue: z.coerce.number().positive().optional(),
+    eventId: z.string().uuid().optional().nullable().or(z.literal("")),
+    promoterId: z.string().uuid().optional().nullable().or(z.literal("")),
+    maxUses: z.coerce.number().int().positive().optional().nullable().or(z.literal("")),
+    startsAt: z.string().datetime().optional().nullable().or(z.literal("")),
+    endsAt: z.string().datetime().optional().nullable().or(z.literal("")),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.discountType === "percent" && data.discountValue != null && data.discountValue > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Desconto percentual máximo é 100%",
+        path: ["discountValue"],
+      });
+    }
+  });
+
 export const checkinSchema = z.object({
-  // Signed PP1./PPW1. JWTs or legacy 64-hex emergency token.
+  // Signed PP1./PPW1. JWTs, 8-char gate code (AB12-CD34), or legacy 64-hex emergency token.
   qrToken: z.string().trim().min(8).max(2048),
+  /** Selected door/event — required so staff cannot check in the wrong night. */
+  eventId: z.string().uuid(),
   deviceInfo: z.string().trim().max(240).optional(),
 });
 

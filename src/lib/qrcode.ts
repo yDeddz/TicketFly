@@ -19,6 +19,7 @@ export async function issueLiveTicketQr(args: {
   ticketId: string;
   qrToken: string;
   qrVersion: number;
+  ttlSeconds?: number;
 }) {
   const session = await signQrSessionPayload(args);
   const dataUrl = await ticketQrDataUrl(session.payload);

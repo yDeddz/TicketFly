@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { RefreshCw, ShieldCheck } from "lucide-react";
+import { Keyboard, RefreshCw, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type QrSession = {
@@ -10,6 +10,7 @@ type QrSession = {
   expiresInSeconds: number;
   refreshAfterSeconds: number;
   status: string;
+  manualCode: string | null;
 };
 
 type TicketQrLiveProps = {
@@ -23,8 +24,10 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
   const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const refreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expiresAtRef = useRef<number>(0);
 
   const clearTimers = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -32,6 +35,11 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
     timerRef.current = null;
     refreshRef.current = null;
   };
+
+  const scheduleRetry = useCallback((delayMs: number, fn: () => void) => {
+    clearTimers();
+    refreshRef.current = setTimeout(fn, delayMs);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,30 +51,68 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
       const payload = await response.json();
 
       if (!response.ok) {
+        const message = payload.message ?? payload.error ?? "QR indisponível";
+        const stillValid = expiresAtRef.current > Date.now();
+        if (stillValid) {
+          setRefreshWarning(`${message}. Mantendo o QR atual até expirar.`);
+          setLoading(false);
+          scheduleRetry(8_000, () => {
+            void load();
+          });
+          return;
+        }
         setSession(null);
-        setError(payload.message ?? payload.error ?? "QR indisponível");
+        setError(message);
         setLoading(false);
         return;
       }
 
       setError(null);
-      setSession(payload);
+      setRefreshWarning(null);
+      setSession({
+        dataUrl: payload.dataUrl,
+        expiresAt: payload.expiresAt,
+        expiresInSeconds: payload.expiresInSeconds,
+        refreshAfterSeconds: payload.refreshAfterSeconds,
+        status: payload.status,
+        manualCode: payload.manualCode ?? null,
+      });
+      expiresAtRef.current = new Date(payload.expiresAt).getTime();
       setSecondsLeft(payload.expiresInSeconds);
       setLoading(false);
 
       clearTimers();
       timerRef.current = setInterval(() => {
-        setSecondsLeft((prev) => Math.max(0, prev - 1));
+        const left = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
+        setSecondsLeft(left);
+        if (left === 0) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          timerRef.current = null;
+          void load();
+        }
       }, 1000);
 
       refreshRef.current = setTimeout(() => {
         void load();
       }, Math.max(15_000, payload.refreshAfterSeconds * 1000));
     } catch {
+      const stillValid = expiresAtRef.current > Date.now();
+      if (stillValid) {
+        setRefreshWarning("Falha de rede ao renovar. Mantendo o QR atual — tentando de novo…");
+        setLoading(false);
+        scheduleRetry(5_000, () => {
+          void load();
+        });
+        return;
+      }
+      setSession(null);
       setError("Falha ao gerar sessão do QR");
       setLoading(false);
+      scheduleRetry(5_000, () => {
+        void load();
+      });
     }
-  }, [accessToken, code]);
+  }, [accessToken, code, scheduleRetry]);
 
   useEffect(() => {
     if (initialStatus !== "paid") {
@@ -87,8 +133,18 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
 
   if (error && !session) {
     return (
-      <div className="rounded-md border border-[#f5a524]/50 bg-[#261802] p-4 text-sm font-medium text-[#ffd27a]">
-        {error}
+      <div className="grid gap-3">
+        <div className="rounded-md border border-[#f5a524]/50 bg-[#261802] p-4 text-sm font-medium text-[#ffd27a]">
+          {error}
+        </div>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-white/15 px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+        >
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+          Tentar novamente
+        </button>
       </div>
     );
   }
@@ -113,6 +169,27 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
         )}
       </div>
 
+      {refreshWarning ? (
+        <p className="rounded-md border border-[#f5a524]/40 bg-[#261802] px-3 py-2 text-center text-xs text-[#ffd27a]">
+          {refreshWarning}
+        </p>
+      ) : null}
+
+      {session?.manualCode ? (
+        <div className="rounded-md border border-[#ff1493]/35 bg-[#210018] px-4 py-3 text-center">
+          <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#ffb1d5]">
+            <Keyboard className="h-3.5 w-3.5" aria-hidden />
+            Código da porta (se a câmera falhar)
+          </p>
+          <p className="mt-1 font-mono text-3xl font-black tracking-[0.18em] text-white">
+            {session.manualCode}
+          </p>
+          <p className="mt-1 text-[11px] text-[#c9aabc]">
+            Diga este código ao operador · expira com o QR ({secondsLeft}s)
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-[#ffb1d5]">
         <span className="inline-flex items-center gap-1.5">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
@@ -128,7 +205,8 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
         </button>
       </div>
       <p className="text-center text-xs text-[#c9aabc]">
-        Este QR rotaciona automaticamente. Na Wallet, use o pass salvo — ele permanece válido até o fim do evento.
+        Este QR e o código da porta rotacionam juntos. Na Wallet, use o pass salvo — ele permanece
+        válido até o fim do evento.
       </p>
     </div>
   );

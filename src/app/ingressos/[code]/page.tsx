@@ -88,7 +88,8 @@ export default async function TicketPage({
             Ref. {ticket.code}
           </p>
           <p className="text-center text-[11px] text-[#c9aabc]/80">
-            A referência pública não libera entrada. Somente o QR dinâmico ou o pass da Wallet.
+            A referência pública não libera entrada. Use o QR dinâmico ou o código curto da porta
+            exibido acima.
           </p>
         </div>
       </section>

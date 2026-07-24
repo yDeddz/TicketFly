@@ -11,8 +11,15 @@ import type { EventWithBatches } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
 
-export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function EventPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ ref?: string; cupom?: string }>;
+}) {
   const { slug } = await params;
+  const query = await searchParams;
   let event: EventWithBatches | null = null;
   let demoMode = true;
 
@@ -111,7 +118,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
         </div>
 
-        <CheckoutForm batches={activeBatches} demoMode={demoMode} feeContract={feeContract} />
+        <CheckoutForm
+          batches={activeBatches}
+          demoMode={demoMode}
+          feeContract={feeContract}
+          initialPromoterCode={query.ref?.trim() ?? ""}
+        />
       </section>
     </main>
   );

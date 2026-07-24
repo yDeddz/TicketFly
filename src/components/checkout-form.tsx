@@ -25,28 +25,67 @@ export function CheckoutForm({
   batches,
   demoMode = false,
   feeContract = DEFAULT_FEE_CONTRACT,
+  initialPromoterCode = "",
 }: {
   batches: TicketBatch[];
   demoMode?: boolean;
   feeContract?: FeeContract;
+  initialPromoterCode?: string;
 }) {
   const [batchId, setBatchId] = useState(batches[0]?.id ?? "");
   const [insuranceSelected, setInsuranceSelected] = useState(true);
   const [showCoverages, setShowCoverages] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountCents: number;
+  } | null>(null);
+  const [promoterCode] = useState(initialPromoterCode);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const selectedBatch = batches.find((batch) => batch.id === batchId);
-  const fee = selectedBatch ? computeServiceFee(selectedBatch.price_cents, feeContract) : null;
+  const discountCents = appliedCoupon?.discountCents ?? 0;
+  const ticketPriceCents = Math.max(0, (selectedBatch?.price_cents ?? 0) - discountCents);
+  const fee = selectedBatch ? computeServiceFee(ticketPriceCents, feeContract) : null;
   const insuranceCents = selectedBatch
-    ? computePurchaseInsurance(selectedBatch.price_cents, feeContract.fee_threshold_cents)
+    ? computePurchaseInsurance(ticketPriceCents, feeContract.fee_threshold_cents)
     : 0;
 
   const totalCents = useMemo(() => {
     if (!selectedBatch || !fee) return 0;
-    return selectedBatch.price_cents + fee.feeCents + (insuranceSelected ? insuranceCents : 0);
-  }, [selectedBatch, fee, insuranceSelected, insuranceCents]);
+    return ticketPriceCents + fee.feeCents + (insuranceSelected ? insuranceCents : 0);
+  }, [selectedBatch, fee, insuranceSelected, insuranceCents, ticketPriceCents]);
+
+  async function applyCoupon() {
+    setError("");
+    setMessage("");
+    if (!batchId || !couponCode.trim()) {
+      setError("Informe o cupom");
+      return;
+    }
+    if (demoMode) {
+      setAppliedCoupon({ code: couponCode.trim().toUpperCase(), discountCents: 0 });
+      setMessage("Modo demo: cupom será validado com a API conectada.");
+      return;
+    }
+    setCouponLoading(true);
+    const response = await fetch(
+      `/api/checkout/coupon?batchId=${encodeURIComponent(batchId)}&code=${encodeURIComponent(couponCode.trim())}`,
+    );
+    const payload = await response.json();
+    setCouponLoading(false);
+    if (!response.ok) {
+      setAppliedCoupon(null);
+      setError(payload.error ?? "Cupom inválido");
+      return;
+    }
+    setAppliedCoupon({ code: payload.code, discountCents: payload.discountCents });
+    setCouponCode(payload.code);
+    setMessage(`Cupom ${payload.code} aplicado (−${formatCurrency(payload.discountCents)})`);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,6 +107,8 @@ export function CheckoutForm({
       body: JSON.stringify({
         batchId,
         insuranceSelected,
+        couponCode: appliedCoupon?.code || couponCode.trim() || undefined,
+        promoterCode: promoterCode || undefined,
       }),
     });
 
@@ -109,7 +150,11 @@ export function CheckoutForm({
                 key={batch.id}
                 type="button"
                 disabled={soldOut}
-                onClick={() => setBatchId(batch.id)}
+                onClick={() => {
+                  setBatchId(batch.id);
+                  setAppliedCoupon(null);
+                  setMessage("");
+                }}
                 className={`grid gap-1 rounded-xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
                   selected
                     ? "border-[#ff1493]/70 bg-[#ff1493]/12"
@@ -131,6 +176,29 @@ export function CheckoutForm({
             );
           })
         )}
+      </div>
+
+      <div className="grid gap-2">
+        <p className="text-sm font-medium">Cupom de desconto</p>
+        <div className="flex gap-2">
+          <input
+            value={couponCode}
+            onChange={(e) => {
+              setCouponCode(e.target.value.toUpperCase());
+              setAppliedCoupon(null);
+            }}
+            placeholder="Código"
+            className="min-w-0 flex-1 rounded-xl border border-white/15 bg-black/30 px-4 py-3 font-mono uppercase text-white outline-none focus:border-[#ff1493]/50"
+          />
+          <button
+            type="button"
+            disabled={couponLoading || !couponCode.trim()}
+            onClick={() => void applyCoupon()}
+            className="rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-white/80 disabled:opacity-50"
+          >
+            {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
+          </button>
+        </div>
       </div>
 
       {selectedBatch && fee ? (
@@ -204,6 +272,12 @@ export function CheckoutForm({
               <span>{selectedBatch.name}</span>
               <strong className="text-white">{formatCurrency(selectedBatch.price_cents)}</strong>
             </div>
+            {discountCents > 0 ? (
+              <div className="flex items-center justify-between text-emerald-200/90">
+                <span>Cupom {appliedCoupon?.code}</span>
+                <strong>−{formatCurrency(discountCents)}</strong>
+              </div>
+            ) : null}
             {insuranceSelected ? (
               <div className="flex items-center justify-between text-white/62">
                 <span>Proteção de compra</span>

@@ -24,6 +24,7 @@ export type TicketAccessRow = {
         city: string | null;
         cover_image_url: string | null;
         slug: string | null;
+        organizer_id?: string;
       }
     | {
         title: string;
@@ -34,6 +35,7 @@ export type TicketAccessRow = {
         city: string | null;
         cover_image_url: string | null;
         slug: string | null;
+        organizer_id?: string;
       }[]
     | null;
   ticket_batches:
@@ -43,7 +45,7 @@ export type TicketAccessRow = {
 };
 
 const TICKET_SELECT =
-  "id,code,qr_token,qr_version,status,buyer_name,buyer_email,buyer_user_id,amount_paid_cents,used_at,event_id,events(title,starts_at,ends_at,venue_name,address,city,cover_image_url,slug),ticket_batches(name)";
+  "id,code,qr_token,qr_version,status,buyer_name,buyer_email,buyer_user_id,amount_paid_cents,used_at,event_id,events(title,starts_at,ends_at,venue_name,address,city,cover_image_url,slug,organizer_id),ticket_batches(name)";
 
 export function unwrapRelation<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
@@ -60,7 +62,7 @@ export async function loadTicketByCode(code: string) {
 
 /**
  * Authorize viewing / issuing QR for a ticket.
- * Allowed: logged-in buyer, admin/checkin/organizer staff, or valid access JWT.
+ * Allowed: logged-in buyer, admin, scoped checkin/organizer staff, or valid access JWT.
  */
 export async function authorizeTicketAccess(args: {
   ticket: TicketAccessRow;
@@ -82,8 +84,30 @@ export async function authorizeTicketAccess(args: {
     }
 
     const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
-    if (profile && ["admin", "checkin", "organizer"].includes(profile.role)) {
+
+    if (profile?.role === "admin") {
       return { ok: true as const, via: "staff" as const, userId: user.id };
+    }
+
+    // Platform door staff can open any ticket QR for support / gate fallback.
+    if (profile?.role === "checkin") {
+      return { ok: true as const, via: "staff" as const, userId: user.id };
+    }
+
+    // Organizers may only mint QR for their own events (fail closed).
+    if (profile?.role === "organizer") {
+      const admin = createAdminClient();
+      const { data: organizer } = await admin
+        .from("organizers")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const event = unwrapRelation(args.ticket.events);
+
+      if (organizer?.id && event?.organizer_id && organizer.id === event.organizer_id) {
+        return { ok: true as const, via: "staff" as const, userId: user.id };
+      }
     }
   }
 

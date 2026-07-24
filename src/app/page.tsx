@@ -90,7 +90,7 @@ export default async function Home() {
           <div className="min-w-0 max-w-2xl">
             <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#ff1493]/25 bg-[#ff1493]/8 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-[#ff9ed2] backdrop-blur-md sm:px-3.5 sm:py-1.5 sm:text-xs">
               <span className="live-dot h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff1493]" />
-              <span className="truncate">Plataforma de venda de ingressos</span>
+              <span className="truncate">Voe mais alto. Viva Experiencias</span>
             </p>
 
             <h1 className="mt-5 text-[clamp(1.85rem,1.1rem+3.6vw,4.25rem)] font-bold leading-[1.08] tracking-tight text-white sm:mt-6 sm:leading-[1.05]">
