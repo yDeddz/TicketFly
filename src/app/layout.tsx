@@ -14,8 +14,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TicketFly",
-  description: "Bilheteria online premium para shows, festivais e experiencias VIP.",
+  title: {
+    default: "TicketFly",
+    template: "%s · TicketFly",
+  },
+  description: "Bilheteria online premium para shows, festivais e experiencias VIP. Voe mais alto. Viva experiências.",
+  applicationName: "TicketFly",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  icons: {
+    icon: [{ url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  openGraph: {
+    title: "TicketFly",
+    description: "Bilheteria online premium para shows, festivais e experiencias VIP.",
+    siteName: "TicketFly",
+    images: [{ url: "/brand/og-square.png", width: 1200, height: 1200, alt: "TicketFly" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "TicketFly",
+    description: "Bilheteria online premium para shows, festivais e experiencias VIP.",
+    images: ["/brand/og-square.png"],
+  },
 };
 
 export default function RootLayout({

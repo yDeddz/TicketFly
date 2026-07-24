@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { requireAdmin } from "@/lib/auth-guards";
 
@@ -32,7 +33,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-8 lg:px-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">TicketFly Ops</p>
+          <div className="mb-3 flex items-center gap-3">
+            <BrandLogo className="h-8 w-8" href="/" variant="mark" />
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">TicketFly Ops</p>
+          </div>
           <h1 className="mt-2 text-3xl font-black md:text-4xl">Painel administrativo</h1>
           <p className="mt-2 text-sm text-white/55">Contratos, vendas, ingressos e reembolsos em um só lugar.</p>
         </div>

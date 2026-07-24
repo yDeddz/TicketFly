@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -76,7 +77,10 @@ export default async function OrganizerLayout({ children }: { children: React.Re
   return (
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-8 lg:px-6">
       <div className="mb-6">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">Parceiro TicketFly</p>
+        <div className="mb-3 flex items-center gap-3">
+          <BrandLogo className="h-8 w-8" href="/" variant="mark" />
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">Parceiro TicketFly</p>
+        </div>
         <h1 className="mt-2 text-3xl font-black md:text-4xl">{organizer.trade_name}</h1>
         <p className="mt-2 text-sm text-white/55">Vendas, porta, QR Code e reembolsos com visão operacional.</p>
       </div>

@@ -3,6 +3,7 @@
 import {
   Eye,
   EyeOff,
+  KeyRound,
   Loader2,
   LockKeyhole,
   LogIn,
@@ -10,21 +11,37 @@ import {
   Sparkles,
   UserPlus,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
+type AuthMode = "login" | "signup" | "forgot";
+
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<AuthMode>("login");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const authError = searchParams.get("error");
+    if (authError) {
+      setError(authError);
+    }
+  }, [searchParams]);
+
+  function switchMode(next: AuthMode) {
+    setMode(next);
+    setError("");
+    setMessage("");
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,6 +56,23 @@ export function LoginForm() {
     }
 
     const supabase = createSupabaseBrowserClient();
+
+    if (mode === "forgot") {
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/redefinir-senha")}`;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+
+      setLoading(false);
+
+      if (resetError) {
+        setError(resetError.message);
+        return;
+      }
+
+      setMessage("Se existir uma conta com esse e-mail, enviamos um link para redefinir a senha.");
+      return;
+    }
 
     if (mode === "login") {
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -55,7 +89,8 @@ export function LoginForm() {
         return;
       }
 
-      router.replace("/");
+      const next = searchParams.get("next");
+      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
       router.refresh();
       return;
     }
@@ -85,6 +120,15 @@ export function LoginForm() {
     setMode("login");
   }
 
+  const title =
+    mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Esqueci a senha";
+  const subtitle =
+    mode === "login"
+      ? "Use e-mail e senha para acessar ingressos e o painel."
+      : mode === "signup"
+        ? "Cadastre-se com e-mail e senha em poucos segundos."
+        : "Informe seu e-mail e enviaremos um link para criar uma nova senha.";
+
   return (
     <form
       onSubmit={submit}
@@ -100,44 +144,32 @@ export function LoginForm() {
           <Sparkles className="h-4 w-4" />
           Acesso TicketFly
         </p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight text-white">
-          {mode === "login" ? "Entrar" : "Criar conta"}
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-white/58">
-          {mode === "login"
-            ? "Use e-mail e senha para acessar ingressos e o painel."
-            : "Cadastre-se com e-mail e senha em poucos segundos."}
-        </p>
+        <h1 className="mt-3 text-3xl font-black tracking-tight text-white">{title}</h1>
+        <p className="mt-2 text-sm leading-6 text-white/58">{subtitle}</p>
       </div>
 
-      <div className="relative grid grid-cols-2 rounded-full border border-white/10 bg-black/35 p-1 text-sm font-bold">
-        <button
-          className={`cursor-pointer rounded-full px-4 py-2.5 transition-colors duration-200 ${
-            mode === "login" ? "bg-[#ff1493] text-white shadow-[0_8px_24px_-12px_rgba(255,20,147,0.9)]" : "text-white/58 hover:text-white"
-          }`}
-          onClick={() => {
-            setMode("login");
-            setError("");
-            setMessage("");
-          }}
-          type="button"
-        >
-          Login
-        </button>
-        <button
-          className={`cursor-pointer rounded-full px-4 py-2.5 transition-colors duration-200 ${
-            mode === "signup" ? "bg-[#ff1493] text-white shadow-[0_8px_24px_-12px_rgba(255,20,147,0.9)]" : "text-white/58 hover:text-white"
-          }`}
-          onClick={() => {
-            setMode("signup");
-            setError("");
-            setMessage("");
-          }}
-          type="button"
-        >
-          Cadastro
-        </button>
-      </div>
+      {mode !== "forgot" ? (
+        <div className="relative grid grid-cols-2 rounded-full border border-white/10 bg-black/35 p-1 text-sm font-bold">
+          <button
+            className={`cursor-pointer rounded-full px-4 py-2.5 transition-colors duration-200 ${
+              mode === "login" ? "bg-[#ff1493] text-white shadow-[0_8px_24px_-12px_rgba(255,20,147,0.9)]" : "text-white/58 hover:text-white"
+            }`}
+            onClick={() => switchMode("login")}
+            type="button"
+          >
+            Login
+          </button>
+          <button
+            className={`cursor-pointer rounded-full px-4 py-2.5 transition-colors duration-200 ${
+              mode === "signup" ? "bg-[#ff1493] text-white shadow-[0_8px_24px_-12px_rgba(255,20,147,0.9)]" : "text-white/58 hover:text-white"
+            }`}
+            onClick={() => switchMode("signup")}
+            type="button"
+          >
+            Cadastro
+          </button>
+        </div>
+      ) : null}
 
       {mode === "signup" ? (
         <label className="relative grid gap-2 text-sm font-medium text-white/90">
@@ -166,29 +198,43 @@ export function LoginForm() {
         />
       </label>
 
-      <label className="relative grid gap-2 text-sm font-medium text-white/90">
-        Senha
-        <div className="relative">
-          <input
-            required
-            type={showPassword ? "text" : "password"}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={6}
-            className="h-12 w-full rounded-xl border border-white/10 bg-[#0d0b10] px-3 pr-12 outline-none transition duration-200 focus:border-[#ff1493]/70 focus:ring-2 focus:ring-[#ff1493]/20"
-            placeholder="Mínimo 6 caracteres"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-          />
+      {mode !== "forgot" ? (
+        <label className="relative grid gap-2 text-sm font-medium text-white/90">
+          Senha
+          <div className="relative">
+            <input
+              required
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={6}
+              className="h-12 w-full rounded-xl border border-white/10 bg-[#0d0b10] px-3 pr-12 outline-none transition duration-200 focus:border-[#ff1493]/70 focus:ring-2 focus:ring-[#ff1493]/20"
+              placeholder="Mínimo 6 caracteres"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              onClick={() => setShowPassword((current) => !current)}
+              className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 cursor-pointer place-items-center rounded-lg text-white/55 transition-colors duration-200 hover:bg-white/5 hover:text-white"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </label>
+      ) : null}
+
+      {mode === "login" ? (
+        <div className="relative -mt-2 flex justify-end">
           <button
             type="button"
-            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-            onClick={() => setShowPassword((current) => !current)}
-            className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 cursor-pointer place-items-center rounded-lg text-white/55 transition-colors duration-200 hover:bg-white/5 hover:text-white"
+            onClick={() => switchMode("forgot")}
+            className="cursor-pointer text-sm font-semibold text-[#ff1493] transition-colors duration-200 hover:text-[#ffb1d5]"
           >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            Esqueci a senha
           </button>
         </div>
-      </label>
+      ) : null}
 
       <button
         disabled={loading}
@@ -198,11 +244,23 @@ export function LoginForm() {
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : mode === "login" ? (
           <LogIn className="h-4 w-4" />
-        ) : (
+        ) : mode === "signup" ? (
           <UserPlus className="h-4 w-4" />
+        ) : (
+          <KeyRound className="h-4 w-4" />
         )}
-        {mode === "login" ? "Entrar" : "Criar conta"}
+        {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"}
       </button>
+
+      {mode === "forgot" ? (
+        <button
+          type="button"
+          onClick={() => switchMode("login")}
+          className="cursor-pointer text-center text-sm font-semibold text-white/60 transition-colors duration-200 hover:text-white"
+        >
+          Voltar ao login
+        </button>
+      ) : null}
 
       {error ? (
         <p className="rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-sm text-red-200" role="alert">
@@ -219,7 +277,9 @@ export function LoginForm() {
         ) : (
           <ShieldCheck className="h-4 w-4 text-[#ff1493]" />
         )}
-        Acesso com e-mail e senha. Sessão mantida no navegador.
+        {mode === "forgot"
+          ? "O link de redefinição expira em pouco tempo e só pode ser usado uma vez."
+          : "Acesso com e-mail e senha. Sessão mantida no navegador."}
       </p>
     </form>
   );

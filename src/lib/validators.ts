@@ -2,8 +2,9 @@ import { z } from "zod";
 
 export const checkoutSchema = z.object({
   batchId: z.string().uuid(),
-  buyerName: z.string().trim().min(2).max(120),
-  buyerEmail: z.string().trim().email().max(160),
+  // Buyer identity is collected on Mercado Pago Checkout Pro.
+  buyerName: z.string().trim().min(2).max(120).optional(),
+  buyerEmail: z.string().trim().email().max(160).optional(),
   promoterCode: z.string().trim().max(40).optional().or(z.literal("")),
   insuranceSelected: z.boolean().optional().default(false),
 });

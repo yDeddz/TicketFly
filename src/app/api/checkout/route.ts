@@ -39,12 +39,23 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Name/email are collected on Mercado Pago. Prefer session profile when present.
+  const buyerName =
+    input.data.buyerName?.trim() ||
+    (typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "") ||
+    (typeof user?.user_metadata?.name === "string" ? user.user_metadata.name.trim() : "") ||
+    "Comprador";
+  const buyerEmail =
+    input.data.buyerEmail?.trim() ||
+    user?.email?.trim() ||
+    `pending+${crypto.randomUUID().slice(0, 8)}@checkout.ticketfly.app`;
+
   const admin = createAdminClient();
   const { data: reservationData, error: reservationError } = await admin
     .rpc("reserve_ticket", {
       p_batch_id: input.data.batchId,
-      p_buyer_name: input.data.buyerName,
-      p_buyer_email: input.data.buyerEmail,
+      p_buyer_name: buyerName,
+      p_buyer_email: buyerEmail,
       p_buyer_user_id: user?.id ?? null,
       p_promoter_code: input.data.promoterCode || null,
     })
@@ -167,10 +178,15 @@ export async function POST(request: Request) {
         ...(useConnect && marketplaceFeeCents > 0
           ? { marketplace_fee: marketplaceFeeCents / 100 }
           : {}),
-        payer: {
-          name: input.data.buyerName,
-          email: input.data.buyerEmail,
-        },
+        // Prefill only when we already know the buyer (logged-in). Otherwise MP collects it.
+        ...(user?.email
+          ? {
+              payer: {
+                name: buyerName !== "Comprador" ? buyerName : undefined,
+                email: user.email,
+              },
+            }
+          : {}),
         metadata: {
           payment_id: payment.id,
           ticket_id: reservation.ticket_id,

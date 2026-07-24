@@ -49,11 +49,11 @@ export async function buildGoogleWalletSaveUrl(ticket: TicketAccessRow) {
         uri: `${appUrl()}/icon.png`,
       },
       contentDescription: {
-        defaultValue: { language: "pt-BR", value: "PinkPass" },
+        defaultValue: { language: "pt-BR", value: "TicketFly" },
       },
     },
     cardTitle: {
-      defaultValue: { language: "pt-BR", value: "PinkPass" },
+      defaultValue: { language: "pt-BR", value: "TicketFly" },
     },
     header: {
       defaultValue: { language: "pt-BR", value: event?.title ?? "Ingresso" },

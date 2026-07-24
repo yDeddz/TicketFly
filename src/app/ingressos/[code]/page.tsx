@@ -56,7 +56,7 @@ export default async function TicketPage({
     <main className="mx-auto max-w-lg px-4 pb-10 pt-8">
       <section className="overflow-hidden rounded-lg border border-[#ff1493]/30 bg-[#120410] shadow-sm shadow-[#ff1493]/10">
         <div className="bg-[#090008] p-5 text-white">
-          <p className="text-sm font-bold uppercase text-[#ff1493]">Ingresso PinkPass</p>
+          <p className="text-sm font-bold uppercase text-[#ff1493]">Ingresso TicketFly</p>
           <h1 className="mt-2 text-2xl font-black">{event?.title}</h1>
           <p className="mt-2 text-white/75">{event?.starts_at ? formatDateTime(event.starts_at) : ""}</p>
           {event?.venue_name ? <p className="mt-1 text-sm text-white/55">{event.venue_name}</p> : null}

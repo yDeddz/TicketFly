@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, CreditCard, Loader2, LockKeyhole, QrCode, ShieldCheck, ShieldPlus } from "lucide-react";
+import { ArrowRight, BadgeCheck, Loader2, LockKeyhole, QrCode, ShieldCheck, ShieldPlus, Ticket } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -31,11 +31,8 @@ export function CheckoutForm({
   feeContract?: FeeContract;
 }) {
   const [batchId, setBatchId] = useState(batches[0]?.id ?? "");
-  const [buyerName, setBuyerName] = useState("");
-  const [buyerEmail, setBuyerEmail] = useState("");
-  const [promoterCode, setPromoterCode] = useState("");
   const [insuranceSelected, setInsuranceSelected] = useState(true);
-  const [showCoverages, setShowCoverages] = useState(true);
+  const [showCoverages, setShowCoverages] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,9 +67,6 @@ export function CheckoutForm({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         batchId,
-        buyerName,
-        buyerEmail,
-        promoterCode,
         insuranceSelected,
       }),
     });
@@ -92,62 +86,52 @@ export function CheckoutForm({
     <form onSubmit={submit} className="glass-panel grid gap-5 rounded-lg p-5">
       <div>
         <p className="text-xs font-black uppercase text-[#ff1493]">Checkout seguro</p>
-        <h2 className="mt-1 text-2xl font-black">Finalizar compra</h2>
-        <p className="mt-2 text-sm text-white/56">Pix, cartao e aprovacao com ingresso digital.</p>
+        <h2 className="mt-1 text-2xl font-black">Escolha seu ingresso</h2>
+        <p className="mt-2 text-sm text-white/56">
+          Selecione o tipo, proteja a compra e continue no Mercado Pago.
+        </p>
       </div>
 
-      <label className="grid gap-2 text-sm font-medium">
-        Lote
-        <select
-          value={batchId}
-          onChange={(event) => setBatchId(event.target.value)}
-          className="h-12 rounded-lg border border-white/10 bg-[#0d0b10] px-3 outline-none transition focus:border-[#ff1493]/70"
-        >
-          {batches.map((batch) => {
+      <div className="grid gap-3">
+        <p className="text-sm font-medium">Tipos de ingresso</p>
+        {batches.length === 0 ? (
+          <p className="rounded-lg border border-white/10 bg-black/20 p-4 text-sm text-white/55">
+            Nenhum ingresso disponível no momento.
+          </p>
+        ) : (
+          batches.map((batch) => {
             const available = batch.quantity_total - batch.quantity_reserved - batch.quantity_sold;
+            const soldOut = available <= 0;
+            const selected = batchId === batch.id;
+
             return (
-              <option key={batch.id} value={batch.id}>
-                {batch.name} - {formatCurrency(batch.price_cents)} - {available} disp.
-              </option>
+              <button
+                key={batch.id}
+                type="button"
+                disabled={soldOut}
+                onClick={() => setBatchId(batch.id)}
+                className={`grid gap-1 rounded-xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                  selected
+                    ? "border-[#ff1493]/70 bg-[#ff1493]/12"
+                    : "border-white/10 bg-black/20 hover:border-white/25"
+                }`}
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span className="flex items-center gap-2 text-sm font-bold">
+                    <Ticket className={`h-4 w-4 ${selected ? "text-[#ff1493]" : "text-white/45"}`} />
+                    {batch.name}
+                  </span>
+                  <strong className="text-base text-white">{formatCurrency(batch.price_cents)}</strong>
+                </span>
+                <span className="text-xs text-white/45">
+                  {soldOut ? "Esgotado" : `${available} disponíveis`}
+                  {batch.description ? ` · ${batch.description}` : null}
+                </span>
+              </button>
             );
-          })}
-        </select>
-      </label>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium">
-          Nome
-          <input
-            required
-            value={buyerName}
-            onChange={(event) => setBuyerName(event.target.value)}
-            className="h-12 rounded-lg border border-white/10 px-3 outline-none transition focus:border-[#ff1493]/70"
-            placeholder="Seu nome"
-          />
-        </label>
-
-        <label className="grid gap-2 text-sm font-medium">
-          E-mail
-          <input
-            required
-            type="email"
-            value={buyerEmail}
-            onChange={(event) => setBuyerEmail(event.target.value)}
-            className="h-12 rounded-lg border border-white/10 px-3 outline-none transition focus:border-[#ff1493]/70"
-            placeholder="voce@email.com"
-          />
-        </label>
+          })
+        )}
       </div>
-
-      <label className="grid gap-2 text-sm font-medium">
-        Codigo do promoter
-        <input
-          value={promoterCode}
-          onChange={(event) => setPromoterCode(event.target.value)}
-          className="h-12 rounded-lg border border-white/10 px-3 outline-none transition focus:border-[#ff1493]/70"
-          placeholder="Opcional"
-        />
-      </label>
 
       {selectedBatch && fee ? (
         <div className="grid gap-3">
@@ -239,20 +223,24 @@ export function CheckoutForm({
       ) : null}
 
       {error ? <p className="text-sm font-medium text-[#ff6aa9]">{error}</p> : null}
-      {message ? <p className="rounded-lg border border-[#ff1493]/25 bg-[#ff1493]/10 p-3 text-sm text-[#ffb1d5]">{message}</p> : null}
+      {message ? (
+        <p className="rounded-lg border border-[#ff1493]/25 bg-[#ff1493]/10 p-3 text-sm text-[#ffb1d5]">
+          {message}
+        </p>
+      ) : null}
 
       <button
         disabled={!batchId || loading}
         className="neon-button flex min-h-[3.25rem] items-center justify-center gap-2 rounded-full px-4 py-4 font-black disabled:opacity-60"
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-        Finalizar Pedido
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+        Continuar para pagamento
       </button>
 
       <div className="grid gap-2 text-xs text-white/50">
         <span className="flex items-center gap-2">
           <LockKeyhole className="h-4 w-4 text-[#ff1493]" />
-          Pagamento criptografado e ambiente protegido.
+          Dados e pagamento no checkout seguro do Mercado Pago.
         </span>
         <span className="flex items-center gap-2">
           <QrCode className="h-4 w-4 text-[#ff1493]" />

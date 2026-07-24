@@ -44,9 +44,9 @@ export async function buildApplePassModel(ticket: TicketAccessRow) {
     passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID ?? "pass.br.com.pinkpass.ticket",
     serialNumber: serial,
     teamIdentifier: process.env.APPLE_TEAM_ID ?? "TEAMID",
-    organizationName: "PinkPass",
-    description: event?.title ?? "Ingresso PinkPass",
-    logoText: "PinkPass",
+    organizationName: "TicketFly",
+    description: event?.title ?? "Ingresso TicketFly",
+    logoText: "TicketFly",
     foregroundColor: "rgb(255, 255, 255)",
     backgroundColor: "rgb(18, 4, 16)",
     labelColor: "rgb(255, 20, 147)",
@@ -128,26 +128,22 @@ export async function buildApplePkpassBuffer(ticket: TicketAccessRow): Promise<B
   const { spawnSync } = await import("node:child_process");
   const { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
+  const { join, resolve } = await import("node:path");
   const { createHash: hash } = await import("node:crypto");
 
   const pass = await buildApplePassModel(ticket);
-  const dir = mkdtempSync(join(tmpdir(), "pinkpass-"));
+  const dir = mkdtempSync(join(tmpdir(), "ticketfly-"));
   const passDir = join(dir, "pass");
   mkdirSync(passDir);
 
   try {
     writeFileSync(join(passDir, "pass.json"), JSON.stringify(pass));
 
-    // Minimal 1x1 PNG placeholders — replace with branded assets in production.
-    const tinyPng = Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-      "base64",
-    );
-    writeFileSync(join(passDir, "icon.png"), tinyPng);
-    writeFileSync(join(passDir, "paula.r@example.org"), tinyPng);
-    writeFileSync(join(passDir, "logo.png"), tinyPng);
-    writeFileSync(join(passDir, "paula.r@example.org"), tinyPng);
+    const brandDir = resolve(process.cwd(), "public/brand");
+    writeFileSync(join(passDir, "icon.png"), readFileSync(resolve(brandDir, "logo-mark-64.png")));
+    writeFileSync(join(passDir, "paula.r@example.org"), readFileSync(resolve(brandDir, "logo-mark-192.png")));
+    writeFileSync(join(passDir, "logo.png"), readFileSync(resolve(brandDir, "logo-header.png")));
+    writeFileSync(join(passDir, "paula.r@example.org"), readFileSync(resolve(brandDir, "logo-header.png")));
 
     const manifest: Record<string, string> = {};
     for (const file of ["pass.json", "icon.png", "paula.r@example.org", "logo.png", "paula.r@example.org"]) {
