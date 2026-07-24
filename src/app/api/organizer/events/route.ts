@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { slugify } from "@/lib/format";
+import { notifyEventWebhook } from "@/lib/organizer-webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { eventSchema } from "@/lib/validators";
@@ -55,6 +56,8 @@ export async function POST(request: Request) {
   if (error || !data) {
     return NextResponse.json({ error: "Erro ao criar evento" }, { status: 500 });
   }
+
+  await notifyEventWebhook(data.id, "event.created");
 
   return NextResponse.json(data);
 }

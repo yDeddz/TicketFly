@@ -36,14 +36,15 @@ supabase/schema.sql
 
 O schema completo está em `supabase/schema.sql` e inclui:
 
-- Tabelas: `users`, `organizers`, `events`, `ticket_batches`, `tickets`, `payments`, `checkins`, `promoters`, `promoter_sales`.
-- Enums de status para usuário, organizador, evento, ingresso, pagamento e check-in.
-- Índices para eventos por slug/data, lotes ativos, pagamentos, ingressos por status e check-ins por evento.
+- Tabelas: `users`, `organizers`, `events`, `ticket_batches`, `tickets`, `payments`, `checkins`, `promoters`, `promoter_sales`, `webhook_deliveries`.
+- Enums de status para usuário, organizador, evento, ingresso, pagamento, check-in e entrega de webhook.
+- Índices para eventos por slug/data, lotes ativos, pagamentos, ingressos por status, check-ins por evento e outbox de webhooks.
 - RLS por perfil: cliente, organizador aprovado, admin e operador de check-in.
 - Funções transacionais:
   - `reserve_ticket`: bloqueia o lote, reserva 1 ingresso e impede oversell por corrida simples.
   - `apply_payment_status`: confirma ou libera reserva conforme status do Mercado Pago.
   - `perform_checkin`: valida QR, marca como usado e impede uso duplicado com `for update`.
+- Webhooks outbound: o parceiro configura URL + secret em `/organizador/webhooks` e recebe `sale.completed`, `sale.refunded` e eventos de ciclo de vida (`event.*`) assinados com HMAC-SHA256.
 
 ## Rotas/API
 
@@ -54,6 +55,7 @@ O schema completo está em `supabase/schema.sql` e inclui:
 - `POST /api/organizer/events`: cria evento para organizador aprovado.
 - `POST /api/organizer/batches`: cria lote de ingresso.
 - `GET /api/organizer/export?eventId=...`: exporta compradores em CSV.
+- `GET/PATCH/POST /api/organizer/webhooks`: configura endpoint do parceiro, rotaciona secret e envia ping de teste.
 - `POST /api/admin/tickets/[id]/cancel`: cancela ingresso.
 
 ## Fluxo de Compra
@@ -66,6 +68,7 @@ O schema completo está em `supabase/schema.sql` e inclui:
 6. Mercado Pago envia webhook `payment`.
 7. Backend valida `x-signature`, busca o pagamento em `/v1/payments/[ID]`, lê `external_reference` e executa `apply_payment_status`.
 8. Se aprovado, ingresso vira `paid`, reserva vira venda e a página `/ingressos/[code]` mostra o QR Code.
+9. Se o parceiro tiver webhook ativo, a Ticket Fly enfileira `sale.completed` em `webhook_deliveries` e POSTA o payload assinado para a URL configurada.
 
 ## Fluxo de Check-in
 
@@ -108,6 +111,7 @@ Referências oficiais consultadas:
 - QR usa `qr_token` aleatório, não dados previsíveis do cliente.
 - Check-in transacional com bloqueio de linha impede dois usos simultâneos.
 - Webhook exige assinatura HMAC do Mercado Pago.
+- Webhooks outbound do parceiro usam `X-TicketFly-Signature` = HMAC-SHA256(secret, `timestamp.body`).
 - O status de pagamento válido vem do webhook + consulta à API do provedor, não do redirect do navegador.
 
 ## Variáveis de Ambiente
@@ -121,8 +125,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 MERCADO_PAGO_ACCESS_TOKEN=
 MERCADO_PAGO_WEBHOOK_SECRET=
-PLATFORM_FEE_PERCENT=10
 ```
+
+A taxa de serviço **não** vem mais do env. O padrão global é:
+
+- pedidos até R$ 120,00 → **12%**
+- pedidos acima de R$ 120,00 → **9%**
+
+Contratos por balada ficam em `organizers` (`fee_threshold_cents`, `fee_percent_upto_threshold`, `fee_percent_above_threshold`) e são editáveis no painel admin. O comprador paga **ingresso + taxa**; o líquido do ingresso vai para a balada e a taxa fica com a Ticket Fly.
 
 ## Ordem Exata de Desenvolvimento
 
@@ -131,12 +141,12 @@ PLATFORM_FEE_PERCENT=10
 3. Configurar Supabase Auth com magic link.
 4. Criar um usuário admin atualizando `users.role = 'admin'`.
 5. Criar/solicitar organizador em `organizers`.
-6. Aprovar organizador com `status = 'approved'`.
+6. Aprovar organizador e configurar contrato de taxa no painel `/admin` (ou `status = 'approved'` no DB).
 7. Criar evento e lote.
 8. Publicar evento com `events.status = 'published'`.
-9. Configurar credenciais do Mercado Pago.
+9. Configurar credenciais do Mercado Pago (token global por enquanto; Connect por balada em breve).
 10. Configurar webhook no painel Mercado Pago.
-11. Comprar ingresso de teste.
+11. Comprar ingresso de teste (total = ingresso + taxa de serviço).
 12. Validar webhook e QR Code.
 13. Testar check-in duplicado.
 14. Subir para Vercel.
@@ -198,19 +208,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
 SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
 MERCADO_PAGO_ACCESS_TOKEN=APP_USR-seu-access-token
 MERCADO_PAGO_WEBHOOK_SECRET=sua-chave-secreta-webhook
-PLATFORM_FEE_PERCENT=10
 ```
 
 Nunca envie `.env.local`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCADO_PAGO_ACCESS_TOKEN` ou `MERCADO_PAGO_WEBHOOK_SECRET` para o GitHub.
 
 ## Melhorias Futuras
 
-- Carrinho com múltiplos ingressos por compra.
+- Carrinho com múltiplos ingressos por compra (limiar de taxa sobre o subtotal).
 - Expiração automática de reservas pendentes.
-- Tela completa para aprovar organizadores.
-- Split/OAuth para repasse automático ao organizador.
+- Mercado Pago Connect / Checkout Pro Marketplace: cobrir no collector da balada com `marketplace_fee` = taxa Ticket Fly.
 - Cupons, promoters com comissão configurável por evento e relatórios financeiros.
 - Reembolso integrado.
 - PWA installable com manifest e cache offline para check-in.
 - Tipos gerados do Supabase com `supabase gen types typescript`.
-- Fila de processamento de webhooks e observabilidade.
+- Worker/cron para reprocessar `webhook_deliveries` pendentes com backoff.

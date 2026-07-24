@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { CheckoutForm } from "@/components/checkout-form";
 import { formatDateTime } from "@/lib/format";
+import { DEFAULT_FEE_CONTRACT, type FeeContract } from "@/lib/fees";
 import { hasSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getShowcaseEvent } from "@/lib/ticketfly-data";
@@ -19,7 +20,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("events")
-      .select("*, organizers(trade_name), ticket_batches(*)")
+      .select(
+        "*, organizers(trade_name, fee_threshold_cents, fee_percent_upto_threshold, fee_percent_above_threshold, service_fee_platform_share_percent, mp_connection_status), ticket_batches(*)",
+      )
       .eq("slug", slug)
       .single();
 
@@ -40,6 +43,17 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     .filter((batch) => batch.is_active)
     .sort((a, b) => a.price_cents - b.price_cents);
 
+  const feeContract: FeeContract = {
+    fee_threshold_cents: event.organizers?.fee_threshold_cents ?? DEFAULT_FEE_CONTRACT.fee_threshold_cents,
+    fee_percent_upto_threshold:
+      event.organizers?.fee_percent_upto_threshold ?? DEFAULT_FEE_CONTRACT.fee_percent_upto_threshold,
+    fee_percent_above_threshold:
+      event.organizers?.fee_percent_above_threshold ?? DEFAULT_FEE_CONTRACT.fee_percent_above_threshold,
+    service_fee_platform_share_percent:
+      event.organizers?.service_fee_platform_share_percent ??
+      DEFAULT_FEE_CONTRACT.service_fee_platform_share_percent,
+  };
+
   return (
     <main className="ticket-grid">
       <section className="relative overflow-hidden">
@@ -49,7 +63,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             backgroundImage: `linear-gradient(90deg, rgba(5,5,5,.96), rgba(5,5,5,.68) 48%, rgba(255,20,147,.12)), linear-gradient(180deg, transparent, #050505 96%), url(${event.cover_image_url ?? "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1800&q=85"})`,
           }}
         />
-        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 pb-14 pt-32 lg:grid-cols-[1.15fr_0.85fr] lg:px-6 lg:pt-40">
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 pb-14 pt-10 lg:grid-cols-[1.15fr_0.85fr] lg:px-6 lg:pt-14">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-[#ff1493]/35 bg-[#ff1493]/10 px-4 py-2 text-xs font-black uppercase text-[#ff7ec8] backdrop-blur-md">
               <span className="live-dot h-2 w-2 rounded-full bg-[#ff1493]" />
@@ -97,7 +111,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
         </div>
 
-        <CheckoutForm batches={activeBatches} demoMode={demoMode} />
+        <CheckoutForm batches={activeBatches} demoMode={demoMode} feeContract={feeContract} />
       </section>
     </main>
   );

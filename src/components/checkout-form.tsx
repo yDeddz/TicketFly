@@ -1,22 +1,55 @@
 "use client";
 
-import { BadgeCheck, CreditCard, Loader2, LockKeyhole, QrCode, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { BadgeCheck, CreditCard, Loader2, LockKeyhole, QrCode, ShieldCheck, ShieldPlus } from "lucide-react";
+import { useMemo, useState } from "react";
 
+import {
+  computePurchaseInsurance,
+  computeServiceFee,
+  DEFAULT_FEE_CONTRACT,
+  type FeeContract,
+} from "@/lib/fees";
 import { formatCurrency } from "@/lib/format";
 import type { TicketBatch } from "@/types/domain";
 
-export function CheckoutForm({ batches, demoMode = false }: { batches: TicketBatch[]; demoMode?: boolean }) {
+const INSURANCE_COVERAGES = [
+  "Doença / COVID-19",
+  "Acidente pessoal",
+  "Furto de documentos",
+  "Falha no transporte público",
+  "Óbito de familiar",
+  "Compromisso profissional / judicial",
+];
+
+export function CheckoutForm({
+  batches,
+  demoMode = false,
+  feeContract = DEFAULT_FEE_CONTRACT,
+}: {
+  batches: TicketBatch[];
+  demoMode?: boolean;
+  feeContract?: FeeContract;
+}) {
   const [batchId, setBatchId] = useState(batches[0]?.id ?? "");
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [promoterCode, setPromoterCode] = useState("");
+  const [insuranceSelected, setInsuranceSelected] = useState(true);
+  const [showCoverages, setShowCoverages] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const selectedBatch = batches.find((batch) => batch.id === batchId);
-  const total = selectedBatch ? selectedBatch.price_cents : 0;
+  const fee = selectedBatch ? computeServiceFee(selectedBatch.price_cents, feeContract) : null;
+  const insuranceCents = selectedBatch
+    ? computePurchaseInsurance(selectedBatch.price_cents, feeContract.fee_threshold_cents)
+    : 0;
+
+  const totalCents = useMemo(() => {
+    if (!selectedBatch || !fee) return 0;
+    return selectedBatch.price_cents + fee.feeCents + (insuranceSelected ? insuranceCents : 0);
+  }, [selectedBatch, fee, insuranceSelected, insuranceCents]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,7 +68,13 @@ export function CheckoutForm({ batches, demoMode = false }: { batches: TicketBat
     const response = await fetch("/api/checkout", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ batchId, buyerName, buyerEmail, promoterCode }),
+      body: JSON.stringify({
+        batchId,
+        buyerName,
+        buyerEmail,
+        promoterCode,
+        insuranceSelected,
+      }),
     });
 
     const payload = await response.json();
@@ -110,15 +149,91 @@ export function CheckoutForm({ batches, demoMode = false }: { batches: TicketBat
         />
       </label>
 
-      {selectedBatch ? (
-        <div className="grid gap-3 rounded-lg border border-white/10 bg-black/30 p-4 text-sm">
-          <div className="flex items-center justify-between text-white/62">
-            <span>{selectedBatch.name}</span>
-            <strong className="text-white">{formatCurrency(selectedBatch.price_cents)}</strong>
+      {selectedBatch && fee ? (
+        <div className="grid gap-3">
+          <div>
+            <h3 className="text-lg font-black">Proteja-se de imprevistos!</h3>
+            <p className="mt-1 text-sm text-white/50">
+              Seguro de compra opcional — reembolso em casos cobertos.
+            </p>
           </div>
-          <div className="flex items-center justify-between border-t border-white/10 pt-3">
-            <span>Total</span>
-            <strong className="text-2xl text-white">{formatCurrency(total)}</strong>
+
+          <button
+            type="button"
+            onClick={() => setInsuranceSelected(true)}
+            className={`relative grid gap-2 rounded-xl border p-4 text-left transition ${
+              insuranceSelected
+                ? "border-[#ff1493]/70 bg-[#ff1493]/12"
+                : "border-white/10 bg-black/20 hover:border-white/25"
+            }`}
+          >
+            <span className="absolute right-3 top-3 rounded-full bg-[#ff1493] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+              Recomendado
+            </span>
+            <span className="flex items-center gap-2 pr-20 text-sm font-bold">
+              <ShieldPlus className="h-4 w-4 text-[#ff1493]" />
+              Proteção de compra — {formatCurrency(insuranceCents)}
+            </span>
+            {showCoverages ? (
+              <ul className="mt-1 grid gap-1 text-xs text-white/55 sm:grid-cols-2">
+                {INSURANCE_COVERAGES.map((item) => (
+                  <li key={item}>• {item}</li>
+                ))}
+              </ul>
+            ) : null}
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCoverages((v) => !v);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  setShowCoverages((v) => !v);
+                }
+              }}
+              className="mt-1 cursor-pointer text-xs font-semibold text-[#ff7ec8] underline-offset-2 hover:underline"
+            >
+              {showCoverages ? "Esconder coberturas" : "Ver coberturas"}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setInsuranceSelected(false)}
+            className={`grid gap-1 rounded-xl border p-4 text-left transition ${
+              !insuranceSelected
+                ? "border-white/40 bg-white/5"
+                : "border-white/10 bg-black/20 hover:border-white/25"
+            }`}
+          >
+            <span className="text-sm font-bold">Seguir sem proteção adicional</span>
+            <span className="text-xs text-white/45">
+              Tenho certeza que vou ao evento — imprevistos acontecem.
+            </span>
+          </button>
+
+          <div className="grid gap-3 rounded-lg border border-white/10 bg-black/30 p-4 text-sm">
+            <div className="flex items-center justify-between text-white/62">
+              <span>{selectedBatch.name}</span>
+              <strong className="text-white">{formatCurrency(selectedBatch.price_cents)}</strong>
+            </div>
+            {insuranceSelected ? (
+              <div className="flex items-center justify-between text-white/62">
+                <span>Proteção de compra</span>
+                <strong className="text-white">{formatCurrency(insuranceCents)}</strong>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between text-white/62">
+              <span>Taxa de serviço ({fee.feePercent}%)</span>
+              <strong className="text-white">{formatCurrency(fee.feeCents)}</strong>
+            </div>
+            <div className="flex items-center justify-between border-t border-white/10 pt-3">
+              <span>Total</span>
+              <strong className="text-2xl text-white">{formatCurrency(totalCents)}</strong>
+            </div>
           </div>
         </div>
       ) : null}

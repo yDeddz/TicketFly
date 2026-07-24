@@ -7,6 +7,8 @@ create type public.event_status as enum ('draft', 'published', 'cancelled', 'fin
 create type public.ticket_status as enum ('pending', 'paid', 'used', 'cancelled');
 create type public.payment_status as enum ('pending', 'approved', 'rejected', 'cancelled', 'refunded');
 create type public.checkin_result as enum ('valid', 'already_used', 'cancelled', 'not_found', 'not_paid');
+create type public.mp_connection_status as enum ('disconnected', 'connected', 'pending');
+create type public.webhook_delivery_status as enum ('pending', 'delivered', 'failed');
 
 create table public.users (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -27,10 +29,38 @@ create table public.organizers (
   phone text,
   city text,
   status public.organizer_status not null default 'pending',
+  fee_threshold_cents integer not null default 12000,
+  fee_percent_upto_threshold numeric(5,2) not null default 12.00,
+  fee_percent_above_threshold numeric(5,2) not null default 9.00,
+  service_fee_platform_share_percent numeric(5,2) not null default 50.00,
+  partnership_notes text,
+  mp_collector_id text,
+  mp_access_token text,
+  mp_connection_status public.mp_connection_status not null default 'disconnected',
+  webhook_url text,
+  webhook_secret text,
+  webhook_enabled boolean not null default false,
+  webhook_events text[] not null default array[
+    'sale.completed',
+    'sale.refunded',
+    'event.created',
+    'event.updated',
+    'event.published',
+    'event.cancelled'
+  ]::text[],
   approved_by uuid references public.users(id),
   approved_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint organizers_fee_threshold_non_negative check (fee_threshold_cents >= 0),
+  constraint organizers_fee_upto_range check (fee_percent_upto_threshold >= 0 and fee_percent_upto_threshold <= 40),
+  constraint organizers_fee_above_range check (fee_percent_above_threshold >= 0 and fee_percent_above_threshold <= 40),
+  constraint organizers_fee_share_range check (service_fee_platform_share_percent >= 0 and service_fee_platform_share_percent <= 100),
+  constraint organizers_webhook_url_format check (
+    webhook_url is null
+    or webhook_url ~* '^https://'
+    or webhook_url ~* '^http://(localhost|127\.0\.0\.1)(:[0-9]+)?(/|$)'
+  )
 );
 
 create table public.events (
@@ -79,6 +109,10 @@ create table public.payments (
   ticket_batch_id uuid not null references public.ticket_batches(id) on delete restrict,
   amount_cents integer not null,
   platform_fee_cents integer not null default 0,
+  platform_fee_share_cents integer not null default 0,
+  partner_fee_share_cents integer not null default 0,
+  insurance_cents integer not null default 0,
+  insurance_selected boolean not null default false,
   net_amount_cents integer not null default 0,
   status public.payment_status not null default 'pending',
   provider text not null default 'mercado_pago',
@@ -87,7 +121,10 @@ create table public.payments (
   checkout_url text,
   raw_payload jsonb,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint payments_platform_fee_share_non_negative check (platform_fee_share_cents >= 0),
+  constraint payments_partner_fee_share_non_negative check (partner_fee_share_cents >= 0),
+  constraint payments_insurance_non_negative check (insurance_cents >= 0)
 );
 
 create table public.tickets (
@@ -100,6 +137,8 @@ create table public.tickets (
   buyer_email citext not null,
   code uuid not null default gen_random_uuid(),
   qr_token text not null unique default encode(gen_random_bytes(32), 'hex'),
+  qr_version integer not null default 1,
+  qr_rotated_at timestamptz,
   status public.ticket_status not null default 'pending',
   amount_paid_cents integer not null default 0,
   used_at timestamptz,
@@ -143,6 +182,25 @@ create table public.promoter_sales (
   created_at timestamptz not null default now()
 );
 
+create table public.webhook_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  organizer_id uuid not null references public.organizers(id) on delete cascade,
+  event_type text not null,
+  idempotency_key text not null,
+  payload jsonb not null,
+  target_url text not null,
+  status public.webhook_delivery_status not null default 'pending',
+  attempts integer not null default 0,
+  response_status integer,
+  last_error text,
+  delivered_at timestamptz,
+  next_attempt_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint webhook_deliveries_idempotent unique (organizer_id, event_type, idempotency_key),
+  constraint webhook_deliveries_attempts_non_negative check (attempts >= 0)
+);
+
 create index users_role_idx on public.users(role);
 create index organizers_status_idx on public.organizers(status);
 create index events_organizer_status_idx on public.events(organizer_id, status);
@@ -156,6 +214,8 @@ create index payments_status_idx on public.payments(status);
 create index payments_provider_payment_idx on public.payments(provider_payment_id);
 create index checkins_event_created_idx on public.checkins(event_id, created_at desc);
 create index promoter_sales_promoter_idx on public.promoter_sales(promoter_id);
+create index webhook_deliveries_pending_idx on public.webhook_deliveries(status, next_attempt_at) where status = 'pending';
+create index webhook_deliveries_organizer_created_idx on public.webhook_deliveries(organizer_id, created_at desc);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -244,11 +304,14 @@ as $$
 declare
   v_batch public.ticket_batches%rowtype;
   v_event public.events%rowtype;
+  v_organizer public.organizers%rowtype;
   v_promoter public.promoters%rowtype;
   v_ticket_id uuid;
   v_ticket_code uuid;
   v_qr_token text;
+  v_fee_percent numeric(5,2);
   v_fee_cents integer;
+  v_total_cents integer;
 begin
   select * into v_batch
   from public.ticket_batches
@@ -267,6 +330,14 @@ begin
     raise exception 'event_not_published';
   end if;
 
+  select * into v_organizer
+  from public.organizers
+  where id = v_event.organizer_id;
+
+  if not found then
+    raise exception 'organizer_not_found';
+  end if;
+
   if not v_batch.is_active or now() < v_batch.sales_start_at or (v_batch.sales_end_at is not null and now() > v_batch.sales_end_at) then
     raise exception 'ticket_batch_closed';
   end if;
@@ -275,12 +346,21 @@ begin
     raise exception 'ticket_batch_sold_out';
   end if;
 
+  if v_batch.price_cents <= v_organizer.fee_threshold_cents then
+    v_fee_percent := v_organizer.fee_percent_upto_threshold;
+  else
+    v_fee_percent := v_organizer.fee_percent_above_threshold;
+  end if;
+
+  v_fee_cents := round(v_batch.price_cents * v_fee_percent / 100.0);
+  v_total_cents := v_batch.price_cents + v_fee_cents;
+
   update public.ticket_batches
   set quantity_reserved = quantity_reserved + 1
   where id = v_batch.id;
 
   insert into public.tickets (event_id, ticket_batch_id, buyer_user_id, buyer_name, buyer_email, amount_paid_cents)
-  values (v_batch.event_id, v_batch.id, p_buyer_user_id, p_buyer_name, p_buyer_email, v_batch.price_cents)
+  values (v_batch.event_id, v_batch.id, p_buyer_user_id, p_buyer_name, p_buyer_email, v_total_cents)
   returning id, code, qr_token into v_ticket_id, v_ticket_code, v_qr_token;
 
   if p_promoter_code is not null then
@@ -289,8 +369,6 @@ begin
     where lower(code) = lower(p_promoter_code)
       and is_active = true;
   end if;
-
-  v_fee_cents := round(v_batch.price_cents * v_event.platform_fee_percent / 100.0);
 
   return query select v_ticket_id, v_ticket_code, v_qr_token, v_batch.event_id, v_batch.price_cents, v_fee_cents, v_promoter.id;
 end;
@@ -356,7 +434,10 @@ begin
   end if;
 
   if p_status = 'approved' and v_ticket.status = 'pending' then
-    update public.tickets set status = 'paid' where id = v_ticket.id;
+    update public.tickets
+    set status = 'paid',
+        amount_paid_cents = v_payment.amount_cents
+    where id = v_ticket.id;
     update public.ticket_batches
     set quantity_reserved = greatest(quantity_reserved - 1, 0),
         quantity_sold = quantity_sold + 1
@@ -382,9 +463,10 @@ declare
   v_result public.checkin_result;
   v_message text;
 begin
+  -- SECURITY: match ONLY qr_token. Public ticket code must never check in.
   select * into v_ticket
   from public.tickets
-  where qr_token = p_qr_token or code::text = p_qr_token
+  where qr_token = p_qr_token
   for update;
 
   if not found then
@@ -418,6 +500,32 @@ begin
 end;
 $$;
 
+create or replace function public.rotate_ticket_qr_token(p_ticket_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_new_token text;
+begin
+  v_new_token := encode(gen_random_bytes(32), 'hex');
+
+  update public.tickets
+  set
+    qr_token = v_new_token,
+    qr_version = coalesce(qr_version, 1) + 1,
+    qr_rotated_at = now()
+  where id = p_ticket_id;
+
+  if not found then
+    raise exception 'ticket_not_found';
+  end if;
+
+  return v_new_token;
+end;
+$$;
+
 alter table public.users enable row level security;
 alter table public.organizers enable row level security;
 alter table public.events enable row level security;
@@ -427,6 +535,7 @@ alter table public.payments enable row level security;
 alter table public.checkins enable row level security;
 alter table public.promoters enable row level security;
 alter table public.promoter_sales enable row level security;
+alter table public.webhook_deliveries enable row level security;
 
 create policy "users can read own profile" on public.users for select using (id = auth.uid() or public.is_admin());
 create policy "users can update own profile" on public.users for update using (id = auth.uid()) with check (id = auth.uid());
@@ -486,13 +595,19 @@ create policy "organizers read promoter sales" on public.promoter_sales for sele
   )
 );
 
+create policy "organizers read own webhook deliveries" on public.webhook_deliveries for select using (
+  public.is_approved_organizer(organizer_id) or public.is_admin()
+);
+
 revoke all on function public.reserve_ticket(uuid, text, text, uuid, text) from public, anon, authenticated;
 revoke all on function public.release_reserved_ticket(uuid) from public, anon, authenticated;
 revoke all on function public.apply_payment_status(uuid, public.payment_status, text, jsonb) from public, anon, authenticated;
 revoke all on function public.perform_checkin(text, uuid, text) from public, anon;
 revoke all on function public.perform_checkin(text, uuid, text) from authenticated;
+revoke all on function public.rotate_ticket_qr_token(uuid) from public, anon, authenticated;
 
 grant execute on function public.reserve_ticket(uuid, text, text, uuid, text) to service_role;
 grant execute on function public.release_reserved_ticket(uuid) to service_role;
 grant execute on function public.apply_payment_status(uuid, public.payment_status, text, jsonb) to service_role;
 grant execute on function public.perform_checkin(text, uuid, text) to service_role;
+grant execute on function public.rotate_ticket_qr_token(uuid) to service_role;

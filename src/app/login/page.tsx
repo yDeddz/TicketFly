@@ -2,7 +2,7 @@ import { LoginForm } from "@/components/login-form";
 
 export default function LoginPage() {
   return (
-    <main className="ticket-grid px-4 pb-16 pt-28">
+    <main className="ticket-grid px-4 pb-16 pt-8">
       <section className="mx-auto grid min-h-[calc(100vh-12rem)] max-w-6xl gap-8 md:grid-cols-[1fr_460px] md:items-center">
         <div>
           <p className="text-sm font-black uppercase text-[#ff1493]">TicketFly ID</p>

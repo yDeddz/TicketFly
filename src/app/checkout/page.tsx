@@ -1,12 +1,23 @@
 import { CheckoutForm } from "@/components/checkout-form";
+import { DEFAULT_FEE_CONTRACT } from "@/lib/fees";
 import { showcaseEvents } from "@/lib/ticketfly-data";
 import { formatDateTime } from "@/lib/format";
 
 export default function CheckoutPage() {
   const event = showcaseEvents[0];
+  const feeContract = {
+    fee_threshold_cents: event.organizers?.fee_threshold_cents ?? DEFAULT_FEE_CONTRACT.fee_threshold_cents,
+    fee_percent_upto_threshold:
+      event.organizers?.fee_percent_upto_threshold ?? DEFAULT_FEE_CONTRACT.fee_percent_upto_threshold,
+    fee_percent_above_threshold:
+      event.organizers?.fee_percent_above_threshold ?? DEFAULT_FEE_CONTRACT.fee_percent_above_threshold,
+    service_fee_platform_share_percent:
+      event.organizers?.service_fee_platform_share_percent ??
+      DEFAULT_FEE_CONTRACT.service_fee_platform_share_percent,
+  };
 
   return (
-    <main className="ticket-grid px-4 pb-16 pt-28 lg:px-6">
+    <main className="ticket-grid px-4 pb-16 pt-8 lg:px-6">
       <section className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_430px] lg:items-start">
         <div className="overflow-hidden rounded-lg border border-white/10 bg-[#111014]">
           <div
@@ -29,7 +40,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <CheckoutForm batches={event.ticket_batches} demoMode />
+        <CheckoutForm batches={event.ticket_batches} demoMode feeContract={feeContract} />
       </section>
     </main>
   );

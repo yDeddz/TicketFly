@@ -1,105 +1,116 @@
 import Link from "next/link";
 
 import { StatCard } from "@/components/stat-card";
-import { formatCurrency, formatDateTime } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrganizerPage() {
+export default async function OrganizerDashboardPage() {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  if (!user) {
-    return <AuthMessage title="Painel do organizador" />;
-  }
+  if (!user) return null;
 
   const admin = createAdminClient();
-  const { data: organizer } = await admin
-    .from("organizers")
-    .select("id,status,trade_name")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!organizer) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-10">
-        <div className="rounded-lg border border-[#ff1493]/30 bg-[#120410] p-6 shadow-sm shadow-[#ff1493]/10">
-          <h1 className="text-2xl font-black">Solicite aprovação como organizador</h1>
-          <p className="mt-2 text-[#c9aabc]">
-            Crie um registro em `organizers` ligado ao seu usuário. O admin aprova no banco ou pelo painel.
-          </p>
-        </div>
-      </main>
-    );
-  }
+  const { data: organizer } = await admin.from("organizers").select("id").eq("user_id", user.id).single();
+  if (!organizer) return null;
 
   const { data: events } = await admin
     .from("events")
-    .select("id,title,slug,status,starts_at,tickets(status,amount_paid_cents),checkins(id)")
+    .select("id,title,status,starts_at,tickets(status,amount_paid_cents,payment_id),checkins(id)")
     .eq("organizer_id", organizer.id)
     .order("starts_at", { ascending: false });
 
-  const paidTickets =
-    events?.flatMap((event) => event.tickets ?? []).filter((ticket) => ticket.status !== "cancelled") ?? [];
-  const totalSold = paidTickets.reduce((sum, ticket) => sum + (ticket.amount_paid_cents ?? 0), 0);
-  const checkins = events?.reduce((sum, event) => sum + (event.checkins?.length ?? 0), 0) ?? 0;
+  const tickets = events?.flatMap((e) => e.tickets ?? []) ?? [];
+  const paid = tickets.filter((t) => t.status === "paid" || t.status === "used");
+  const used = tickets.filter((t) => t.status === "used");
+  const cancelled = tickets.filter((t) => t.status === "cancelled");
+
+  const paymentIds = [
+    ...new Set(paid.map((t) => t.payment_id).filter((id): id is string => Boolean(id))),
+  ];
+
+  let revenue = 0;
+  if (paymentIds.length > 0) {
+    const { data: payments } = await admin
+      .from("payments")
+      .select("net_amount_cents")
+      .in("id", paymentIds)
+      .eq("status", "approved");
+    revenue = payments?.reduce((sum, p) => sum + (p.net_amount_cents ?? 0), 0) ?? 0;
+  }
+
+  // Fallback for legacy tickets without payment net ledger
+  if (revenue === 0 && paid.length > 0 && paymentIds.length === 0) {
+    revenue = paid.reduce((sum, t) => sum + (t.amount_paid_cents ?? 0), 0);
+  }
+
+  const checkins = events?.reduce((sum, e) => sum + (e.checkins?.length ?? 0), 0) ?? 0;
+  const live = events?.filter((e) => e.status === "published").length ?? 0;
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-6 px-4 py-8">
-      <div>
-        <p className="text-sm font-bold uppercase text-[#ff1493]">Organizador</p>
-        <h1 className="text-3xl font-black">{organizer.trade_name}</h1>
-        <p className="text-[#c9aabc]">Status: {organizer.status}</p>
+    <div className="grid gap-8">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="Receita líquida (você)" value={formatCurrency(revenue)} tone="pink" />
+        <StatCard label="Vendidos" value={String(paid.length)} />
+        <StatCard label="QR validados" value={String(used.length)} />
+        <StatCard label="Aguardando entrada" value={String(paid.length - used.length)} tone="light" />
+        <StatCard label="Cancelados/reembolsos" value={String(cancelled.length)} tone="light" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total vendido" value={formatCurrency(totalSold)} tone="pink" />
-        <StatCard label="Ingressos" value={String(paidTickets.length)} />
-        <StatCard label="Check-ins" value={String(checkins)} tone="light" />
-      </div>
-
-      <section className="rounded-lg border border-[#ff1493]/30 bg-[#120410] shadow-sm shadow-[#ff1493]/10">
-        <div className="border-b border-[#ff1493]/20 p-4">
-          <h2 className="font-black">Eventos</h2>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-[#ff1493]/25 bg-[#120410] p-5">
+          <h2 className="font-black">Operação de porta</h2>
+          <p className="mt-2 text-sm text-[#c9aabc]">{checkins} check-ins registrados · {live} evento(s) publicado(s)</p>
+          <Link href="/organizador/entradas" className="mt-4 inline-flex text-sm font-bold text-[#ff7ec8] hover:text-white">
+            Abrir gestão de entrada →
+          </Link>
         </div>
-        <div className="divide-y divide-[#ff1493]/15">
-          {events?.map((event) => (
-            <div key={event.id} className="grid gap-3 p-4 md:grid-cols-[1fr_auto_auto] md:items-center">
-              <div>
-                <strong>{event.title}</strong>
-                <p className="text-sm text-[#c9aabc]">{formatDateTime(event.starts_at)}</p>
-              </div>
-              <span className="text-sm font-medium">{event.status}</span>
-              <div className="flex gap-2">
-                <Link className="rounded-md border border-[#ff1493]/40 px-3 py-2 text-sm font-bold text-[#ff8ac4]" href={`/eventos/${event.slug}`}>
-                  Ver
+        <div className="rounded-2xl border border-[#ff1493]/25 bg-[#120410] p-5">
+          <h2 className="font-black">Eventos</h2>
+          <p className="mt-2 text-sm text-[#c9aabc]">Crie noites, lotes e publique para vender.</p>
+          <Link href="/organizador/eventos" className="mt-4 inline-flex text-sm font-bold text-[#ff7ec8] hover:text-white">
+            Gerenciar eventos →
+          </Link>
+        </div>
+        <div className="rounded-2xl border border-[#ff1493]/25 bg-[#120410] p-5">
+          <h2 className="font-black">Reembolsos</h2>
+          <p className="mt-2 text-sm text-[#c9aabc]">Cancele ingressos e devolva valores com rastreio.</p>
+          <Link href="/organizador/reembolsos" className="mt-4 inline-flex text-sm font-bold text-[#ff7ec8] hover:text-white">
+            Ver reembolsos →
+          </Link>
+        </div>
+      </div>
+
+      <section className="rounded-2xl border border-[#ff1493]/25 bg-[#120410]">
+        <div className="border-b border-white/10 px-5 py-4">
+          <h2 className="font-black">Próximos / recentes</h2>
+        </div>
+        <div className="divide-y divide-white/8">
+          {(events ?? []).slice(0, 6).map((event) => {
+            const eventTickets = event.tickets ?? [];
+            const sold = eventTickets.filter((t) => t.status === "paid" || t.status === "used").length;
+            const scanned = eventTickets.filter((t) => t.status === "used").length;
+            return (
+              <div key={event.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                <div>
+                  <strong>{event.title}</strong>
+                  <p className="text-sm text-white/50">{event.status} · {sold} vendidos · {scanned} na porta</p>
+                </div>
+                <Link href={`/organizador/eventos`} className="text-sm font-bold text-[#ff7ec8]">
+                  Detalhes
                 </Link>
-                <Link className="rounded-md bg-[#ff1493] px-3 py-2 text-sm font-bold text-white" href={`/api/organizer/export?eventId=${event.id}`}>
-                  Exportar CSV
-                </Link>
               </div>
-            </div>
-          ))}
+            );
+          })}
+          {(events?.length ?? 0) === 0 ? (
+            <p className="px-5 py-8 text-sm text-white/45">Nenhum evento ainda. Crie o primeiro em Eventos.</p>
+          ) : null}
         </div>
       </section>
-    </main>
-  );
-}
-
-function AuthMessage({ title }: { title: string }) {
-  return (
-    <main className="mx-auto max-w-xl px-4 py-12">
-      <div className="rounded-lg border border-[#ff1493]/30 bg-[#120410] p-6 shadow-sm shadow-[#ff1493]/10">
-        <h1 className="text-2xl font-black">{title}</h1>
-        <p className="mt-2 text-[#c9aabc]">Entre com seu e-mail para acessar esta área.</p>
-        <Link className="mt-5 inline-block rounded-md bg-[#ff1493] px-4 py-3 font-bold text-white" href="/login">
-          Entrar
-        </Link>
-      </div>
-    </main>
+    </div>
   );
 }

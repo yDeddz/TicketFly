@@ -41,8 +41,14 @@ export const showcaseEvents: ShowcaseEvent[] = [
     cover_image_url:
       "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1800&q=85",
     status: "published",
-    platform_fee_percent: 10,
-    organizers: { trade_name: "TicketFly Live" },
+    organizers: {
+      trade_name: "TicketFly Live",
+      fee_threshold_cents: 12000,
+      fee_percent_upto_threshold: 12,
+      fee_percent_above_threshold: 9,
+      service_fee_platform_share_percent: 50,
+      mp_connection_status: "disconnected",
+    },
     category: "Festival",
     highlight: "Ao vivo",
     lineup: ["Aurora Bass", "Maya Volt", "DJ Prisma"],
@@ -66,8 +72,14 @@ export const showcaseEvents: ShowcaseEvent[] = [
     cover_image_url:
       "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1800&q=85",
     status: "published",
-    platform_fee_percent: 10,
-    organizers: { trade_name: "Night Mode" },
+    organizers: {
+      trade_name: "Night Mode",
+      fee_threshold_cents: 12000,
+      fee_percent_upto_threshold: 12,
+      fee_percent_above_threshold: 9,
+      service_fee_platform_share_percent: 50,
+      mp_connection_status: "disconnected",
+    },
     category: "Show",
     highlight: "Hot",
     lineup: ["Nina Wave", "Club Zero"],
@@ -91,8 +103,14 @@ export const showcaseEvents: ShowcaseEvent[] = [
     cover_image_url:
       "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1800&q=85",
     status: "published",
-    platform_fee_percent: 10,
-    organizers: { trade_name: "Skyline Group" },
+    organizers: {
+      trade_name: "Skyline Group",
+      fee_threshold_cents: 12000,
+      fee_percent_upto_threshold: 12,
+      fee_percent_above_threshold: 9,
+      service_fee_platform_share_percent: 50,
+      mp_connection_status: "disconnected",
+    },
     category: "VIP",
     highlight: "VIP",
     lineup: ["Luna Chrome", "House District"],
@@ -116,8 +134,14 @@ export const showcaseEvents: ShowcaseEvent[] = [
     cover_image_url:
       "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=1800&q=85",
     status: "published",
-    platform_fee_percent: 10,
-    organizers: { trade_name: "Orbit Music" },
+    organizers: {
+      trade_name: "Orbit Music",
+      fee_threshold_cents: 12000,
+      fee_percent_upto_threshold: 12,
+      fee_percent_above_threshold: 9,
+      service_fee_platform_share_percent: 50,
+      mp_connection_status: "disconnected",
+    },
     category: "Live",
     highlight: "Tour",
     lineup: ["The Orbitals", "VJ North"],
@@ -132,3 +156,119 @@ export const showcaseEvents: ShowcaseEvent[] = [
 export function getShowcaseEvent(slug: string) {
   return showcaseEvents.find((event) => event.slug === slug);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Wallet ("Meus Ingressos") demo data                                        */
+/* -------------------------------------------------------------------------- */
+
+export type TicketTier = "VIP" | "Pista" | "Camarote";
+
+export type WalletTicket = {
+  id: string;
+  code: string;
+  slug: string;
+  title: string;
+  cover_image_url: string;
+  starts_at: string;
+  city: string;
+  venue_name: string;
+  tier: TicketTier;
+  price_cents: number;
+  qrReady: boolean;
+  accessToken?: string;
+  status?: "pending" | "paid" | "used" | "cancelled";
+};
+
+export const walletUser = {
+  firstName: "Leonardo",
+  isVip: true,
+} as const;
+
+export const myTickets: WalletTicket[] = [
+  {
+    id: "tkt-neon-pulse",
+    code: "TF-8F2A-NEON",
+    slug: "neon-pulse-festival",
+    title: "Neon Pulse Festival",
+    cover_image_url:
+      "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=85",
+    starts_at: "2026-06-20T22:00:00-03:00",
+    city: "Sao Paulo",
+    venue_name: "Distrito Tech Arena",
+    tier: "VIP",
+    price_cents: 32900,
+    qrReady: true,
+  },
+  {
+    id: "tkt-after-dark",
+    code: "TF-3C7B-DARK",
+    slug: "after-dark-sessions",
+    title: "After Dark Sessions",
+    cover_image_url:
+      "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=85",
+    starts_at: "2026-07-04T23:30:00-03:00",
+    city: "Sao Paulo",
+    venue_name: "Black Room Club",
+    tier: "Pista",
+    price_cents: 8900,
+    qrReady: true,
+  },
+  {
+    id: "tkt-vip-skyline",
+    code: "TF-9D1E-SKY",
+    slug: "vip-skyline-experience",
+    title: "VIP Skyline Experience",
+    cover_image_url:
+      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=85",
+    starts_at: "2026-07-18T21:00:00-03:00",
+    city: "Sao Paulo",
+    venue_name: "Helix Rooftop",
+    tier: "Camarote",
+    price_cents: 39900,
+    qrReady: true,
+  },
+];
+
+export type PurchaseRecord = {
+  id: string;
+  title: string;
+  date: string;
+  amount_cents: number;
+  status: "Concluido" | "Utilizado" | "Reembolsado";
+};
+
+export const purchaseHistory: PurchaseRecord[] = [
+  {
+    id: "ph-orbit",
+    title: "Orbit Live Tour",
+    date: "2026-03-02T20:00:00-03:00",
+    amount_cents: 17900,
+    status: "Utilizado",
+  },
+  {
+    id: "ph-pulse-2025",
+    title: "Neon Pulse Festival 2025",
+    date: "2025-11-14T22:00:00-03:00",
+    amount_cents: 28900,
+    status: "Utilizado",
+  },
+  {
+    id: "ph-after",
+    title: "After Dark Sessions",
+    date: "2026-01-25T23:30:00-03:00",
+    amount_cents: 8900,
+    status: "Concluido",
+  },
+];
+
+export type PaymentMethod = {
+  id: string;
+  label: string;
+  detail: string;
+  primary?: boolean;
+};
+
+export const paymentMethods: PaymentMethod[] = [
+  { id: "pm-visa", label: "Visa • final 2026", detail: "Expira 09/29", primary: true },
+  { id: "pm-pix", label: "Pix", detail: "Aprovacao instantanea" },
+];

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { appUrl } from "@/lib/env";
+import {
+  computePurchaseInsurance,
+  splitServiceFee,
+} from "@/lib/fees";
 import { preferenceClient } from "@/lib/mercado-pago";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -14,6 +18,13 @@ type Reservation = {
   price_cents: number;
   fee_cents: number;
   promoter_id: string | null;
+};
+
+type OrganizerPayConfig = {
+  id: string;
+  service_fee_platform_share_percent: number | null;
+  mp_access_token: string | null;
+  mp_connection_status: string | null;
 };
 
 export async function POST(request: Request) {
@@ -47,15 +58,46 @@ export async function POST(request: Request) {
     );
   }
 
+  const { data: eventRow } = await admin
+    .from("events")
+    .select("id,title,organizers(id,service_fee_platform_share_percent,mp_access_token,mp_connection_status)")
+    .eq("id", reservation.event_id)
+    .single();
+
+  const organizersRaw = eventRow?.organizers as OrganizerPayConfig | OrganizerPayConfig[] | null | undefined;
+  const organizer = Array.isArray(organizersRaw) ? organizersRaw[0] : organizersRaw;
+
+  const platformSharePercent = Number(organizer?.service_fee_platform_share_percent ?? 50);
+  const { platformShareCents, partnerShareCents } = splitServiceFee(
+    reservation.fee_cents,
+    platformSharePercent,
+  );
+
+  const insuranceSelected = Boolean(input.data.insuranceSelected);
+  const insuranceCents = insuranceSelected
+    ? computePurchaseInsurance(reservation.price_cents)
+    : 0;
+
+  const amountCents = reservation.price_cents + reservation.fee_cents + insuranceCents;
+  const netAmountCents = reservation.price_cents + partnerShareCents;
+  const marketplaceFeeCents = platformShareCents + insuranceCents;
+
+  const useConnect =
+    organizer?.mp_connection_status === "connected" && Boolean(organizer.mp_access_token);
+
   const { data: payment, error: paymentError } = await admin
     .from("payments")
     .insert({
       user_id: user?.id ?? null,
       event_id: reservation.event_id,
       ticket_batch_id: input.data.batchId,
-      amount_cents: reservation.price_cents,
+      amount_cents: amountCents,
       platform_fee_cents: reservation.fee_cents,
-      net_amount_cents: reservation.price_cents - reservation.fee_cents,
+      platform_fee_share_cents: platformShareCents,
+      partner_fee_share_cents: partnerShareCents,
+      insurance_cents: insuranceCents,
+      insurance_selected: insuranceSelected,
+      net_amount_cents: netAmountCents,
       status: "pending",
     })
     .select("id")
@@ -78,17 +120,40 @@ export async function POST(request: Request) {
     });
   }
 
-  const { data: ticket } = await admin
-    .from("tickets")
-    .select("code, events(title)")
-    .eq("id", reservation.ticket_id)
-    .single();
-  const ticketEvent = Array.isArray(ticket?.events) ? ticket?.events[0] : ticket?.events;
+  const eventTitle = eventRow?.title ?? "Ingresso Ticket Fly";
+
+  const items = [
+    {
+      id: reservation.ticket_id,
+      title: eventTitle,
+      quantity: 1,
+      currency_id: "BRL" as const,
+      unit_price: reservation.price_cents / 100,
+    },
+    {
+      id: `${reservation.ticket_id}-fee`,
+      title: "Taxa de serviço",
+      quantity: 1,
+      currency_id: "BRL" as const,
+      unit_price: reservation.fee_cents / 100,
+    },
+  ];
+
+  if (insuranceCents > 0) {
+    items.push({
+      id: `${reservation.ticket_id}-insurance`,
+      title: "Seguro de compra",
+      quantity: 1,
+      currency_id: "BRL" as const,
+      unit_price: insuranceCents / 100,
+    });
+  }
 
   let preference;
 
   try {
-    preference = await preferenceClient(payment.id).create({
+    const sellerToken = useConnect ? organizer!.mp_access_token! : undefined;
+    preference = await preferenceClient(payment.id, sellerToken).create({
       body: {
         external_reference: payment.id,
         notification_url: `${appUrl()}/api/webhooks/mercado-pago?source_news=webhooks`,
@@ -98,15 +163,10 @@ export async function POST(request: Request) {
           failure: `${appUrl()}/status/${payment.id}`,
         },
         auto_return: "approved",
-        items: [
-          {
-            id: reservation.ticket_id,
-            title: ticketEvent?.title ?? "Ingresso PinkPass",
-            quantity: 1,
-            currency_id: "BRL",
-            unit_price: reservation.price_cents / 100,
-          },
-        ],
+        items: items.filter((item) => item.unit_price > 0),
+        ...(useConnect && marketplaceFeeCents > 0
+          ? { marketplace_fee: marketplaceFeeCents / 100 }
+          : {}),
         payer: {
           name: input.data.buyerName,
           email: input.data.buyerEmail,
@@ -114,6 +174,10 @@ export async function POST(request: Request) {
         metadata: {
           payment_id: payment.id,
           ticket_id: reservation.ticket_id,
+          insurance_selected: insuranceSelected,
+          platform_fee_share_cents: platformShareCents,
+          partner_fee_share_cents: partnerShareCents,
+          connect: useConnect,
         },
       },
     });
@@ -141,7 +205,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     paymentId: payment.id,
-    ticketCode: ticket?.code,
+    ticketCode: reservation.ticket_code,
     checkoutUrl,
   });
 }

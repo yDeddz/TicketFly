@@ -9,6 +9,7 @@ type CheckinResponse = {
   message: string;
   ticket_id: string | null;
   event_id: string | null;
+  reason?: string;
 };
 
 const resultClass: Record<CheckinResponse["result"], string> = {
@@ -19,42 +20,80 @@ const resultClass: Record<CheckinResponse["result"], string> = {
   not_paid: "bg-[#261802] text-[#ffd27a] border-[#f5a524]/50",
 };
 
+const COOLDOWN_MS = 3500;
+
 export function CheckinScanner() {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const loadingRef = useRef(false);
+  const lastPayloadRef = useRef<string>("");
+  const cooldownUntilRef = useRef(0);
   const [manualCode, setManualCode] = useState("");
   const [result, setResult] = useState<CheckinResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
   const validate = useCallback(async (qrToken: string) => {
+    const trimmed = qrToken.trim();
+    if (!trimmed) return;
+
+    const now = Date.now();
     if (loadingRef.current) return;
+    if (now < cooldownUntilRef.current && trimmed === lastPayloadRef.current) return;
+
     loadingRef.current = true;
+    lastPayloadRef.current = trimmed;
     setLoading(true);
 
-    const response = await fetch("/api/checkin/validate", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        qrToken,
-        deviceInfo: navigator.userAgent,
-      }),
-    });
+    try {
+      const response = await fetch("/api/checkin/validate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          qrToken: trimmed,
+          deviceInfo: navigator.userAgent.slice(0, 240),
+        }),
+      });
 
-    const payload = await response.json();
-    setLoading(false);
-    loadingRef.current = false;
-    setResult(response.ok ? payload : { result: "not_found", message: payload.error, ticket_id: null, event_id: null });
+      const payload = await response.json();
+      const next: CheckinResponse = response.ok
+        ? payload
+        : {
+            result: "not_found",
+            message: payload.error ?? "Falha na validação",
+            ticket_id: null,
+            event_id: null,
+          };
+
+      setResult(next);
+
+      if (next.result === "valid" || next.result === "already_used") {
+        cooldownUntilRef.current = Date.now() + COOLDOWN_MS;
+      } else {
+        cooldownUntilRef.current = Date.now() + 1200;
+      }
+    } catch {
+      setResult({
+        result: "not_found",
+        message: "Falha de rede ao validar ingresso",
+        ticket_id: null,
+        event_id: null,
+      });
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
   }, []);
 
   useEffect(() => {
     scannerRef.current = new Html5QrcodeScanner(
       "qr-reader",
-      { fps: 8, qrbox: { width: 260, height: 260 }, rememberLastUsedCamera: true },
+      { fps: 6, qrbox: { width: 260, height: 260 }, rememberLastUsedCamera: true },
       false,
     );
 
     scannerRef.current.render(
-      (decodedText) => validate(decodedText),
+      (decodedText) => {
+        void validate(decodedText);
+      },
       () => undefined,
     );
 
@@ -70,6 +109,9 @@ export function CheckinScanner() {
           <Camera className="h-5 w-5 text-[#ff1493]" />
           <h1 className="text-xl font-black">Check-in</h1>
         </div>
+        <p className="mb-3 text-sm text-[#c9aabc]">
+          Escaneie o QR dinâmico da tela do ingresso ou o QR salvo na Wallet. Código público do ingresso não é aceito.
+        </p>
         <div id="qr-reader" className="overflow-hidden rounded-lg" />
       </section>
 
@@ -77,16 +119,19 @@ export function CheckinScanner() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            validate(manualCode);
+            void validate(manualCode);
           }}
           className="grid gap-3 rounded-lg border border-[#ff1493]/30 bg-[#120410] p-4 shadow-sm shadow-[#ff1493]/10"
         >
           <label className="grid gap-2 text-sm font-medium">
-            Código manual
+            Payload / token (não use o código público)
             <input
               value={manualCode}
               onChange={(event) => setManualCode(event.target.value)}
               className="h-11 rounded-md border border-[#ff1493]/30 px-3"
+              placeholder="PP1.… ou token de emergência"
+              autoComplete="off"
+              spellCheck={false}
             />
           </label>
           <button

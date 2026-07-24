@@ -35,7 +35,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           : source;
 
   return (
-    <main className="ticket-grid px-4 pb-16 pt-28 lg:px-6">
+    <main className="ticket-grid px-4 pb-16 pt-8 lg:px-6">
       <section className="mx-auto max-w-7xl">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <div>

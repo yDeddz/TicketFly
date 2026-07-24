@@ -1,3 +1,23 @@
+export type MpConnectionStatus = "disconnected" | "connected" | "pending";
+
+export type OrganizerWebhookEvent =
+  | "sale.completed"
+  | "sale.refunded"
+  | "event.created"
+  | "event.updated"
+  | "event.published"
+  | "event.cancelled";
+
+export type OrganizerSummary = {
+  trade_name: string;
+  fee_threshold_cents?: number;
+  fee_percent_upto_threshold?: number;
+  fee_percent_above_threshold?: number;
+  service_fee_platform_share_percent?: number;
+  mp_connection_status?: MpConnectionStatus;
+  webhook_enabled?: boolean;
+};
+
 export type EventWithBatches = {
   id: string;
   title: string;
@@ -10,11 +30,10 @@ export type EventWithBatches = {
   ends_at: string | null;
   cover_image_url: string | null;
   status: "draft" | "published" | "cancelled" | "finished";
-  platform_fee_percent: number;
+  /** @deprecated Fee comes from organizer contract; kept for legacy rows. */
+  platform_fee_percent?: number;
   ticket_batches: TicketBatch[];
-  organizers?: {
-    trade_name: string;
-  } | null;
+  organizers?: OrganizerSummary | null;
 };
 
 export type TicketBatch = {
