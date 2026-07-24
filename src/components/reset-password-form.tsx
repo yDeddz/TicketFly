@@ -51,7 +51,7 @@ export function ResetPasswordForm() {
     if (initial) {
       setEmail(initial);
       setStep("confirm");
-      setMessage("Digite o código de 6 dígitos do e-mail e escolha a nova senha.");
+      setMessage("Digite o código de 8 dígitos do e-mail e escolha a nova senha.");
     }
   }, [searchParams]);
 
@@ -92,7 +92,7 @@ export function ResetPasswordForm() {
     setPassword("");
     setConfirmPassword("");
     setStep("confirm");
-    setMessage("Código enviado. Confira o e-mail e digite os 6 dígitos abaixo.");
+    setMessage("Código enviado. Confira o e-mail e digite os 8 dígitos abaixo.");
   }
 
   async function resendCode() {
@@ -137,8 +137,8 @@ export function ResetPasswordForm() {
       return;
     }
 
-    if (!/^\d{6}$/.test(token)) {
-      setError("Informe o código de 6 dígitos do e-mail.");
+    if (!/^\d{8}$/.test(token)) {
+      setError("Informe o código de 8 dígitos do e-mail.");
       return;
     }
 
@@ -199,7 +199,7 @@ export function ResetPasswordForm() {
           </p>
           <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Esqueci a senha</h1>
           <p className="mt-2 text-sm leading-6 text-white/58">
-            Enviaremos um código de 6 dígitos para o seu e-mail.
+            Enviaremos um código de 8 dígitos para o seu e-mail.
           </p>
         </div>
 
@@ -257,7 +257,7 @@ export function ResetPasswordForm() {
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Código e nova senha</h1>
         <p className="mt-2 text-sm leading-6 text-white/58">
-          Digite o código de 6 dígitos do e-mail e defina a nova senha.
+          Digite o código de 8 dígitos do e-mail e defina a nova senha.
         </p>
       </div>
 
@@ -280,11 +280,11 @@ export function ResetPasswordForm() {
           required
           inputMode="numeric"
           autoFocus
-          maxLength={6}
+          maxLength={8}
           value={code}
-          onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-          className="h-14 rounded-xl border border-white/10 bg-[#0d0b10] px-3 text-center text-2xl font-black tracking-[0.4em] outline-none transition duration-200 focus:border-[#ff1493]/70 focus:ring-2 focus:ring-[#ff1493]/20"
-          placeholder="000000"
+          onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 8))}
+          className="h-14 rounded-xl border border-white/10 bg-[#0d0b10] px-3 text-center text-2xl font-black tracking-[0.35em] outline-none transition duration-200 focus:border-[#ff1493]/70 focus:ring-2 focus:ring-[#ff1493]/20"
+          placeholder="00000000"
           autoComplete="one-time-code"
           aria-describedby="reset-code-hint"
         />
@@ -332,7 +332,7 @@ export function ResetPasswordForm() {
       </label>
 
       <button
-        disabled={loading || code.length !== 6}
+        disabled={loading || code.length !== 8}
         className="neon-button flex min-h-[3.25rem] cursor-pointer items-center justify-center gap-2 rounded-full px-4 font-black transition duration-200 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}

@@ -127,7 +127,7 @@ export function LoginForm() {
       ? "Use e-mail e senha para acessar ingressos e o painel."
       : mode === "signup"
         ? "Cadastre-se com e-mail e senha em poucos segundos."
-        : "Informe seu e-mail e enviaremos um código de 6 dígitos para criar uma nova senha.";
+        : "Informe seu e-mail e enviaremos um código de 8 dígitos para criar uma nova senha.";
 
   return (
     <form

@@ -176,7 +176,7 @@ Contratos por balada ficam em `organizers` (`fee_threshold_cents`, `fee_percent_
 
 ```html
 <h2>Redefinir senha · TicketFly</h2>
-<p>Use este código de 6 dígitos no app:</p>
+<p>Use este código de 8 dígitos no app:</p>
 <p style="font-size:28px;letter-spacing:6px;font-weight:700;">{{ .Token }}</p>
 <p>O código expira em poucos minutos. Se você não pediu a redefinição, ignore este e-mail.</p>
 ```

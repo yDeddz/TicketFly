@@ -12,7 +12,7 @@ export default function ResetPasswordPage() {
             Redefina sua senha com um código.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-white/62">
-            Receba um código de 6 dígitos no e-mail, confirme na tela e escolha uma senha nova — sem
+            Receba um código de 8 dígitos no e-mail, confirme na tela e escolha uma senha nova — sem
             depender de links que abrem na home.
           </p>
         </div>
