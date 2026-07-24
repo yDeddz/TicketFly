@@ -1,116 +1,146 @@
 "use client";
 
-import { Eye, EyeOff, Loader2, LockKeyhole, Sparkles } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2, LockKeyhole, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
+type Step = "request" | "confirm";
+
+function mapAuthError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("rate limit") || lower.includes("too many")) {
+    return "Muitas tentativas. Aguarde um minuto e tente de novo.";
+  }
+  if (
+    lower.includes("token") ||
+    lower.includes("otp") ||
+    lower.includes("expired") ||
+    lower.includes("invalid")
+  ) {
+    return "Código inválido ou expirado. Toque em Reenviar código.";
+  }
+  if (lower.includes("same password") || lower.includes("should be different")) {
+    return "A nova senha precisa ser diferente da atual.";
+  }
+  return message;
+}
+
 export function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [step, setStep] = useState<Step>("request");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    const fromQuery = searchParams.get("email")?.trim() ?? "";
+    const fromStorage =
+      typeof window !== "undefined" ? sessionStorage.getItem("ticketfly_reset_email")?.trim() ?? "" : "";
+    const initial = (fromQuery || fromStorage).toLowerCase();
+
+    if (initial) {
+      setEmail(initial);
+      setStep("confirm");
+      setMessage("Digite o código de 6 dígitos do e-mail e escolha a nova senha.");
+    }
+  }, [searchParams]);
+
+  async function sendCode(targetEmail: string) {
+    const supabase = createSupabaseBrowserClient();
+    // Sem redirectTo: o fluxo usa OTP ({{ .Token }}) no e-mail, não o link.
+    return supabase.auth.resetPasswordForEmail(targetEmail);
+  }
+
+  async function requestCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      setReady(true);
       setError("Configure o Supabase para autenticar.");
       return;
     }
 
-    const supabase = createSupabaseBrowserClient();
-    let active = true;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      if (event === "PASSWORD_RECOVERY" || session) {
-        setHasSession(true);
-        setReady(true);
-      }
-    });
-
-    async function establishRecoverySession() {
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
-
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (!active) return;
-
-        url.searchParams.delete("code");
-        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-
-        if (exchangeError) {
-          setError("Link inválido ou expirado. Solicite um novo.");
-          setReady(true);
-          return;
-        }
-
-        setHasSession(true);
-        setReady(true);
-        return;
-      }
-
-      const hash = window.location.hash.startsWith("#")
-        ? window.location.hash.slice(1)
-        : window.location.hash;
-      const hashParams = new URLSearchParams(hash);
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
-      const type = hashParams.get("type");
-
-      if (accessToken && refreshToken && type === "recovery") {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (!active) return;
-
-        window.history.replaceState({}, "", url.pathname + url.search);
-
-        if (sessionError) {
-          setError("Link inválido ou expirado. Solicite um novo.");
-          setReady(true);
-          return;
-        }
-
-        setHasSession(true);
-        setReady(true);
-        return;
-      }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!active) return;
-
-      if (session) {
-        setHasSession(true);
-      }
-      setReady(true);
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) {
+      setError("Informe seu e-mail.");
+      return;
     }
 
-    void establishRecoverySession();
+    setLoading(true);
+    const { error: resetError } = await sendCode(normalized);
+    setLoading(false);
 
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+    if (resetError) {
+      setError(mapAuthError(resetError.message));
+      return;
+    }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    sessionStorage.setItem("ticketfly_reset_email", normalized);
+    setEmail(normalized);
+    setCode("");
+    setPassword("");
+    setConfirmPassword("");
+    setStep("confirm");
+    setMessage("Código enviado. Confira o e-mail e digite os 6 dígitos abaixo.");
+  }
+
+  async function resendCode() {
+    setError("");
+    setMessage("");
+
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) {
+      setError("Informe seu e-mail.");
+      return;
+    }
+
+    setResending(true);
+    const { error: resetError } = await sendCode(normalized);
+    setResending(false);
+
+    if (resetError) {
+      setError(mapAuthError(resetError.message));
+      return;
+    }
+
+    sessionStorage.setItem("ticketfly_reset_email", normalized);
+    setCode("");
+    setMessage("Novo código enviado. Confira sua caixa de entrada.");
+  }
+
+  async function confirmReset(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setMessage("");
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      setError("Configure o Supabase para autenticar.");
+      return;
+    }
+
+    const normalized = email.trim().toLowerCase();
+    const token = code.replace(/\s/g, "");
+
+    if (!normalized) {
+      setError("Informe seu e-mail.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(token)) {
+      setError("Informe o código de 6 dígitos do e-mail.");
+      return;
+    }
 
     if (password.length < 6) {
       setError("A senha precisa ter pelo menos 6 caracteres.");
@@ -124,50 +154,97 @@ export function ResetPasswordForm() {
 
     setLoading(true);
     const supabase = createSupabaseBrowserClient();
+
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: normalized,
+      token,
+      type: "recovery",
+    });
+
+    if (verifyError) {
+      setLoading(false);
+      setError(mapAuthError(verifyError.message));
+      return;
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(mapAuthError(updateError.message));
       return;
     }
 
-    setMessage("Senha atualizada. Redirecionando…");
+    sessionStorage.removeItem("ticketfly_reset_email");
+    setMessage("Senha atualizada. Entrando…");
     router.replace("/");
     router.refresh();
   }
 
-  if (!ready) {
-    return (
-      <div className="glass-panel mx-auto grid w-full max-w-md place-items-center gap-3 rounded-2xl border border-white/10 p-8">
-        <Loader2 className="h-5 w-5 animate-spin text-[#ff1493]" />
-        <p className="text-sm text-white/60">Validando link de recuperação…</p>
-      </div>
-    );
-  }
+  const panelClass =
+    "glass-panel relative mx-auto grid w-full max-w-md gap-5 overflow-hidden rounded-2xl border border-white/10 p-6 shadow-[0_24px_80px_-40px_rgba(255,20,147,0.55)]";
 
-  if (!hasSession) {
+  if (step === "request") {
     return (
-      <div className="glass-panel mx-auto grid w-full max-w-md gap-4 rounded-2xl border border-white/10 p-6">
-        <h1 className="text-2xl font-black text-white">Link inválido ou expirado</h1>
-        <p className="text-sm leading-6 text-white/60">
-          Solicite um novo e-mail de redefinição de senha para continuar.
-        </p>
+      <form onSubmit={requestCode} className={panelClass}>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(255,20,147,0.28),transparent_70%)]"
+        />
+
+        <div className="relative">
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#ff1493]">
+            <Sparkles className="h-4 w-4" />
+            Recuperação
+          </p>
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Esqueci a senha</h1>
+          <p className="mt-2 text-sm leading-6 text-white/58">
+            Enviaremos um código de 6 dígitos para o seu e-mail.
+          </p>
+        </div>
+
+        <label className="relative grid gap-2 text-sm font-medium text-white/90">
+          E-mail
+          <input
+            required
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="h-12 rounded-xl border border-white/10 bg-[#0d0b10] px-3 outline-none transition duration-200 focus:border-[#ff1493]/70 focus:ring-2 focus:ring-[#ff1493]/20"
+            placeholder="voce@email.com"
+            autoComplete="email"
+          />
+        </label>
+
+        <button
+          disabled={loading}
+          className="neon-button flex min-h-[3.25rem] cursor-pointer items-center justify-center gap-2 rounded-full px-4 font-black transition duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+          Enviar código
+        </button>
+
         <Link
           href="/login"
-          className="neon-button inline-flex min-h-[3rem] items-center justify-center rounded-full px-4 text-center text-sm font-black"
+          className="cursor-pointer text-center text-sm font-semibold text-white/60 transition-colors duration-200 hover:text-white"
         >
           Voltar ao login
         </Link>
-      </div>
+
+        {error ? (
+          <p className="rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-sm text-red-200" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {message ? (
+          <p className="rounded-xl border border-[#ff1493]/25 bg-[#ff1493]/10 p-3 text-sm text-[#ffb1d5]">{message}</p>
+        ) : null}
+      </form>
     );
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="glass-panel relative mx-auto grid w-full max-w-md gap-5 overflow-hidden rounded-2xl border border-white/10 p-6 shadow-[0_24px_80px_-40px_rgba(255,20,147,0.55)]"
-    >
+    <form onSubmit={confirmReset} className={panelClass}>
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(255,20,147,0.28),transparent_70%)]"
@@ -178,11 +255,43 @@ export function ResetPasswordForm() {
           <Sparkles className="h-4 w-4" />
           Recuperação
         </p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Nova senha</h1>
+        <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Código e nova senha</h1>
         <p className="mt-2 text-sm leading-6 text-white/58">
-          Escolha uma senha nova para acessar sua conta TicketFly.
+          Digite o código de 6 dígitos do e-mail e defina a nova senha.
         </p>
       </div>
+
+      <label className="relative grid gap-2 text-sm font-medium text-white/90">
+        E-mail
+        <input
+          required
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          className="h-12 rounded-xl border border-white/10 bg-[#0d0b10] px-3 outline-none transition duration-200 focus:border-[#ff1493]/70 focus:ring-2 focus:ring-[#ff1493]/20"
+          placeholder="voce@email.com"
+          autoComplete="email"
+        />
+      </label>
+
+      <label className="relative grid gap-2 text-sm font-medium text-white/90">
+        Código do e-mail
+        <input
+          required
+          inputMode="numeric"
+          autoFocus
+          maxLength={6}
+          value={code}
+          onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+          className="h-14 rounded-xl border border-white/10 bg-[#0d0b10] px-3 text-center text-2xl font-black tracking-[0.4em] outline-none transition duration-200 focus:border-[#ff1493]/70 focus:ring-2 focus:ring-[#ff1493]/20"
+          placeholder="000000"
+          autoComplete="one-time-code"
+          aria-describedby="reset-code-hint"
+        />
+        <span id="reset-code-hint" className="text-xs text-white/45">
+          Confira a caixa de entrada e o spam. O código expira em poucos minutos.
+        </span>
+      </label>
 
       <label className="relative grid gap-2 text-sm font-medium text-white/90">
         Nova senha
@@ -223,12 +332,38 @@ export function ResetPasswordForm() {
       </label>
 
       <button
-        disabled={loading}
+        disabled={loading || code.length !== 6}
         className="neon-button flex min-h-[3.25rem] cursor-pointer items-center justify-center gap-2 rounded-full px-4 font-black transition duration-200 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
         Salvar nova senha
       </button>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <button
+          type="button"
+          disabled={resending || loading}
+          onClick={() => void resendCode()}
+          className="cursor-pointer font-semibold text-[#ff1493] transition-colors duration-200 hover:text-[#ffb1d5] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {resending ? "Reenviando…" : "Reenviar código"}
+        </button>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => {
+            setStep("request");
+            setCode("");
+            setPassword("");
+            setConfirmPassword("");
+            setError("");
+            setMessage("");
+          }}
+          className="cursor-pointer font-semibold text-white/60 transition-colors duration-200 hover:text-white disabled:opacity-60"
+        >
+          Trocar e-mail
+        </button>
+      </div>
 
       {error ? (
         <p className="rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-sm text-red-200" role="alert">

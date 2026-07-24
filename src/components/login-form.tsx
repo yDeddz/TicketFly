@@ -59,12 +59,8 @@ export function LoginForm() {
     const supabase = createSupabaseBrowserClient();
 
     if (mode === "forgot") {
-      // Dedicated path (no query params) — Supabase appends ?code= and would
-      // otherwise overwrite ?next=, sending the user to home after exchange.
-      const redirectTo = `${window.location.origin}/auth/reset`;
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
-      });
+      const normalized = email.trim().toLowerCase();
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalized);
 
       setLoading(false);
 
@@ -73,7 +69,8 @@ export function LoginForm() {
         return;
       }
 
-      setMessage("Se existir uma conta com esse e-mail, enviamos um link para redefinir a senha.");
+      sessionStorage.setItem("ticketfly_reset_email", normalized);
+      router.push(`/redefinir-senha?email=${encodeURIComponent(normalized)}`);
       return;
     }
 
@@ -130,7 +127,7 @@ export function LoginForm() {
       ? "Use e-mail e senha para acessar ingressos e o painel."
       : mode === "signup"
         ? "Cadastre-se com e-mail e senha em poucos segundos."
-        : "Informe seu e-mail e enviaremos um link para criar uma nova senha.";
+        : "Informe seu e-mail e enviaremos um código de 6 dígitos para criar uma nova senha.";
 
   return (
     <form
@@ -252,7 +249,7 @@ export function LoginForm() {
         ) : (
           <KeyRound className="h-4 w-4" />
         )}
-        {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"}
+        {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar código"}
       </button>
 
       {mode === "forgot" ? (
@@ -281,7 +278,7 @@ export function LoginForm() {
           <ShieldCheck className="h-4 w-4 text-[#ff1493]" />
         )}
         {mode === "forgot"
-          ? "O link de redefinição expira em pouco tempo e só pode ser usado uma vez."
+          ? "O código expira em poucos minutos. Digite-o na próxima tela com a nova senha."
           : "Acesso com e-mail e senha. Sessão mantida no navegador."}
       </p>
 

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { ResetPasswordForm } from "@/components/reset-password-form";
 
 export default function ResetPasswordPage() {
@@ -7,14 +9,23 @@ export default function ResetPasswordPage() {
         <div>
           <p className="text-sm font-black uppercase text-[#ff1493]">TicketFly ID</p>
           <h1 className="mt-4 text-5xl font-black leading-none md:text-7xl">
-            Redefina sua senha com segurança.
+            Redefina sua senha com um código.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-white/62">
-            Depois de clicar no link do e-mail, escolha uma senha nova e volte a acessar ingressos e
-            painéis.
+            Receba um código de 6 dígitos no e-mail, confirme na tela e escolha uma senha nova — sem
+            depender de links que abrem na home.
           </p>
         </div>
-        <ResetPasswordForm />
+        <Suspense
+          fallback={
+            <div className="glass-panel mx-auto grid w-full max-w-md place-items-center gap-3 rounded-2xl border border-white/10 p-8">
+              <div className="h-5 w-5 animate-pulse rounded-full bg-[#ff1493]/50" />
+              <p className="text-sm text-white/60">Carregando…</p>
+            </div>
+          }
+        >
+          <ResetPasswordForm />
+        </Suspense>
       </section>
     </main>
   );

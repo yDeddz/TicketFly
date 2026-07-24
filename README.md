@@ -171,13 +171,22 @@ Contratos por balada ficam em `organizers` (`fee_threshold_cents`, `fee_percent_
 2. Abra o SQL Editor e execute `supabase/schema.sql`.
 3. Em Authentication > URL Configuration:
    - Site URL: `https://seu-dominio.com`
-   - Redirect URLs: `https://seu-dominio.com/**` (inclui `/auth/callback` e `/auth/reset` usados no login e na recuperação de senha)
-4. Copie as chaves do projeto:
+   - Redirect URLs: `https://seu-dominio.com/**`
+4. Em Authentication > Email Templates > **Reset password**, mostre o código OTP no corpo do e-mail (a app usa `verifyOtp` com tipo `recovery`, sem depender do link):
+
+```html
+<h2>Redefinir senha · TicketFly</h2>
+<p>Use este código de 6 dígitos no app:</p>
+<p style="font-size:28px;letter-spacing:6px;font-weight:700;">{{ .Token }}</p>
+<p>O código expira em poucos minutos. Se você não pediu a redefinição, ignore este e-mail.</p>
+```
+
+5. Copie as chaves do projeto:
    - Project URL -> `NEXT_PUBLIC_SUPABASE_URL`
    - anon public -> `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - service_role -> `SUPABASE_SERVICE_ROLE_KEY`
-5. Crie seu usuário pelo login do site.
-6. Depois que o usuário existir, rode no SQL Editor:
+6. Crie seu usuário pelo login do site.
+7. Depois que o usuário existir, rode no SQL Editor:
 
 ```sql
 update public.users
