@@ -91,7 +91,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           <div>
             <BrandLogo className="max-w-[11rem] sm:max-w-[13rem]" variant="stacked" />
             <p className="mt-4 max-w-sm text-sm leading-6 text-white/58">
-              Tecnologia de bilheteria para eventos com venda rapida, checkout premium e ingresso digital inteligente.
+              Tecnologia para criar, divulgar, vender e gerenciar eventos com mais eficiência, oferecendo uma experiência completa para organizadores, promoters e participantes.
             </p>
           </div>
           <div className="grid gap-3 text-sm text-white/64">
