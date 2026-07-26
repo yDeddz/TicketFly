@@ -1,17 +1,15 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
   Clapperboard,
   Music2,
   Percent,
-  ShieldCheck,
   Ticket,
   Trophy,
-  Zap,
 } from "lucide-react";
 
 import { EventCard } from "@/components/event-card";
+import { FeatureGlowCards } from "@/components/feature-glow-cards";
 import { FeaturedEventBanner } from "@/components/featured-event-banner";
 import { SectionTitle } from "@/components/section-title";
 import { HyperText } from "@/components/ui/hyper-text";
@@ -163,19 +161,8 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-3 px-4 py-10 sm:gap-4 sm:px-5 sm:py-12 md:grid-cols-2 lg:grid-cols-4 lg:px-6">
-        <Feature icon={<Ticket className="h-5 w-5" />} title="Ingresso digital" text="QR Code único, direto no seu celular." />
-        <Feature
-          icon={<ShieldCheck className="h-5 w-5" />}
-          title="Pagamento seguro"
-          text="Pix e cartão com checkout protegido."
-        />
-        <Feature icon={<Zap className="h-5 w-5" />} title="Compra em segundos" text="Escolha o lote e finalize sem atrito." />
-        <Feature
-          icon={<BadgeCheck className="h-5 w-5" />}
-          title="Entrada garantida"
-          text="Ingresso válido com confirmação na hora."
-        />
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-5 sm:py-12 lg:px-6">
+        <FeatureGlowCards />
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-5 sm:py-8 lg:px-6">
@@ -235,17 +222,5 @@ export default async function Home() {
         </div>
       </section>
     </main>
-  );
-}
-
-function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
-  return (
-    <div className="surface lift rounded-2xl p-4 sm:p-5">
-      <div className="grid h-10 w-10 place-items-center rounded-xl border border-[#ff1493]/20 bg-[#ff1493]/10 text-[#ff9ed2] sm:h-11 sm:w-11">
-        {icon}
-      </div>
-      <h3 className="mt-3 font-semibold text-white sm:mt-4">{title}</h3>
-      <p className="mt-1.5 text-sm leading-6 text-white/55 sm:mt-2">{text}</p>
-    </div>
   );
 }

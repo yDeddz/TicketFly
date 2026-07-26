@@ -105,8 +105,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             <Link className="hover:text-white" href="/parceiros#candidatura">
               Criar evento
             </Link>
-            <Link className="hover:text-white" href="/checkout">
-              Checkout
+            <Link className="hover:text-white" href="/ajuda">
+              Central de Ajuda
             </Link>
             <Link className="hover:text-white" href="/checkin">
               Check-in
