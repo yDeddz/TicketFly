@@ -12,8 +12,10 @@ import { EventCard } from "@/components/event-card";
 import { FeatureGlowCards } from "@/components/feature-glow-cards";
 import { FeaturedEventBanner } from "@/components/featured-event-banner";
 import { SectionTitle } from "@/components/section-title";
+import { FAQ } from "@/components/ui/faq-tabs";
 import { HyperText } from "@/components/ui/hyper-text";
 import { hasSupabaseConfig } from "@/lib/env";
+import { homeFaqCategories, homeFaqData } from "@/lib/faq-data";
 import { formatCurrency } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { showcaseEvents } from "@/lib/ticketfly-data";
@@ -219,6 +221,25 @@ export default async function Home() {
           {featured.slice(0, 3).map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-5 sm:pb-20 sm:pt-10 lg:px-6">
+        <FAQ
+          compact
+          title="Dúvidas frequentes"
+          subtitle="Central de Ajuda"
+          categories={homeFaqCategories}
+          faqData={homeFaqData}
+        />
+        <div className="mt-8 flex justify-center">
+          <Link
+            href="/ajuda"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-white/75 transition-colors hover:border-[#ff1493]/40 hover:bg-[#ff1493]/10 hover:text-white"
+          >
+            Ver toda a Central de Ajuda
+            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+          </Link>
         </div>
       </section>
     </main>

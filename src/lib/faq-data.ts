@@ -285,3 +285,32 @@ export const faqData: FAQData = {
     },
   ],
 };
+
+/** Compact subset for the home page FAQ teaser. */
+export const homeFaqCategories: FAQCategories = {
+  "comprar-ingressos": "Comprar Ingressos",
+  "meus-ingressos": "Meus Ingressos",
+  pagamentos: "Pagamentos",
+  checkin: "Check-in",
+  conta: "Conta",
+};
+
+export const homeFaqData: FAQData = {
+  "comprar-ingressos": faqData["comprar-ingressos"].slice(0, 2),
+  "meus-ingressos": [
+    faqData["meus-ingressos"][0]!,
+    faqData["meus-ingressos"][2]!,
+  ],
+  pagamentos: [
+    faqData.pagamentos[0]!,
+    faqData.pagamentos[1]!,
+  ],
+  checkin: [
+    faqData.checkin[1]!,
+    faqData.checkin[0]!,
+  ],
+  conta: [
+    faqData.conta[0]!,
+    faqData.conta[3]!,
+  ],
+};
