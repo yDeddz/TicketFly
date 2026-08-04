@@ -1,7 +1,12 @@
 import Link from "next/link";
 
+import {
+  OrganizerAsaasConnectForm,
+  OrganizerSetPrimaryMpButton,
+} from "@/components/organizer-asaas-connect";
 import { formatCurrency } from "@/lib/format";
 import { hasMercadoPagoOAuthConfig } from "@/lib/mercado-pago";
+import { hasAsaasConfig } from "@/lib/payments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -19,7 +24,7 @@ const errorMessages: Record<string, string> = {
 export default async function OrganizerPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; connected?: string }>;
+  searchParams: Promise<{ error?: string; connected?: string; asaas?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createSupabaseServerClient();
@@ -32,7 +37,7 @@ export default async function OrganizerPaymentsPage({
   const { data: organizer } = await admin
     .from("organizers")
     .select(
-      "id,trade_name,mp_connection_status,mp_collector_id,service_fee_platform_share_percent,fee_percent_upto_threshold,fee_percent_above_threshold,fee_threshold_cents",
+      "id,trade_name,mp_connection_status,mp_collector_id,primary_payment_provider,asaas_connection_status,asaas_wallet_id,asaas_account_id,service_fee_platform_share_percent,fee_percent_upto_threshold,fee_percent_above_threshold,fee_threshold_cents",
     )
     .eq("user_id", user.id)
     .single();
@@ -59,21 +64,36 @@ export default async function OrganizerPaymentsPage({
   }
 
   const oauthReady = hasMercadoPagoOAuthConfig();
+  const asaasConfigured = hasAsaasConfig();
+  const mpConnected = organizer.mp_connection_status === "connected";
+  const asaasConnected =
+    organizer.asaas_connection_status === "connected" && Boolean(organizer.asaas_wallet_id);
+  const primary = organizer.primary_payment_provider ?? "mercado_pago";
   const partnerShare = 100 - Number(organizer.service_fee_platform_share_percent ?? 50);
   const error = params.error ? errorMessages[params.error] ?? params.error : null;
 
   return (
     <div className="grid gap-6">
       <div>
-        <h2 className="text-2xl font-black">Pagamentos e Connect</h2>
+        <h2 className="text-2xl font-black">Pagamentos e recebimento</h2>
         <p className="mt-1 text-sm text-[#c9aabc]">
-          Conecte sua conta Mercado Pago para receber o valor do ingresso + sua fatia da taxa automaticamente.
+          Escolha um provedor para receber ingresso + sua fatia da taxa automaticamente no checkout.
+          Provedor ativo:{" "}
+          <span className="font-bold text-white">
+            {primary === "asaas" ? "Asaas" : "Mercado Pago"}
+          </span>
+          .
         </p>
       </div>
 
       {params.connected ? (
         <p className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-          Mercado Pago conectado com sucesso.
+          Mercado Pago conectado e definido como provedor ativo.
+        </p>
+      ) : null}
+      {params.asaas ? (
+        <p className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+          Asaas conectado e definido como provedor ativo.
         </p>
       ) : null}
       {error ? (
@@ -82,7 +102,7 @@ export default async function OrganizerPaymentsPage({
 
       <div className="grid gap-4 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5 md:grid-cols-2">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-white/45">Status Connect</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-white/45">Mercado Pago</p>
           <p className="mt-2 text-2xl font-black capitalize">{organizer.mp_connection_status}</p>
           {organizer.mp_collector_id ? (
             <p className="mt-1 text-sm text-white/50">Collector ID: {organizer.mp_collector_id}</p>
@@ -93,13 +113,14 @@ export default async function OrganizerPaymentsPage({
                 href="/api/organizer/mp/connect"
                 className="rounded-full bg-[#ff1493] px-4 py-2.5 text-sm font-bold text-white"
               >
-                {organizer.mp_connection_status === "connected" ? "Reconectar Mercado Pago" : "Conectar Mercado Pago"}
+                {mpConnected ? "Reconectar Mercado Pago" : "Conectar Mercado Pago"}
               </Link>
             ) : (
               <span className="rounded-full border border-white/15 px-4 py-2.5 text-sm text-white/55">
                 OAuth pendente de configuração no servidor
               </span>
             )}
+            <OrganizerSetPrimaryMpButton enabled={mpConnected} isPrimary={primary === "mercado_pago"} />
           </div>
         </div>
         <div>
@@ -115,6 +136,16 @@ export default async function OrganizerPaymentsPage({
           </ul>
         </div>
       </div>
+
+      <OrganizerAsaasConnectForm
+        asaasReady={asaasConnected}
+        asaasConfigured={asaasConfigured}
+        asaasStatus={organizer.asaas_connection_status}
+        asaasWalletId={organizer.asaas_wallet_id}
+        primaryProvider={primary}
+        tradeName={organizer.trade_name}
+        defaultEmail={user.email ?? ""}
+      />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/10 bg-[#120410] p-5">

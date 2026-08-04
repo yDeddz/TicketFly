@@ -1,4 +1,4 @@
-import { paymentClient } from "@/lib/mercado-pago";
+import { refundViaProvider } from "@/lib/payments";
 import { notifySaleRefunded } from "@/lib/organizer-webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -7,12 +7,22 @@ function hasRealMercadoPagoToken() {
   return token.startsWith("APP_USR-") && !token.includes("your-access-token");
 }
 
+function canAttemptProviderRefund(provider: string | null | undefined) {
+  if (provider === "asaas") {
+    const key = process.env.ASAAS_API_KEY ?? "";
+    return Boolean(key) && !key.includes("your-");
+  }
+  return hasRealMercadoPagoToken();
+}
+
 export async function refundTicketLocally(args: {
   ticketId: string;
   actorUserId: string;
   reason?: string;
   tryMercadoPago?: boolean;
+  tryProviderRefund?: boolean;
 }) {
+  const tryProvider = args.tryProviderRefund ?? args.tryMercadoPago ?? false;
   const admin = createAdminClient();
   const { data: ticket, error: ticketError } = await admin
     .from("tickets")
@@ -28,31 +38,23 @@ export async function refundTicketLocally(args: {
     return { ok: false as const, error: "Ingresso não pode ser reembolsado neste status", status: 409 };
   }
 
-  let mpRefunded = false;
+  let providerRefunded = false;
   const paymentId = ticket.payment_id;
 
   if (paymentId) {
     const { data: payment } = await admin
       .from("payments")
-      .select("id,status,provider_payment_id,amount_cents")
+      .select("id,status,provider,provider_payment_id,amount_cents")
       .eq("id", paymentId)
       .single();
 
     if (
       payment &&
-      args.tryMercadoPago &&
+      tryProvider &&
       payment.provider_payment_id &&
-      hasRealMercadoPagoToken()
+      canAttemptProviderRefund(payment.provider)
     ) {
-      try {
-        const client = paymentClient() as unknown as {
-          refund: (payload: { id: string | number }) => Promise<unknown>;
-        };
-        await client.refund({ id: payment.provider_payment_id });
-        mpRefunded = true;
-      } catch {
-        mpRefunded = false;
-      }
+      providerRefunded = await refundViaProvider(payment.provider, payment.provider_payment_id);
     }
 
     if (payment && payment.status !== "refunded") {
@@ -63,8 +65,10 @@ export async function refundTicketLocally(args: {
           raw_payload: {
             refunded_by: args.actorUserId,
             reason: args.reason ?? null,
-            mp_refund_attempted: Boolean(args.tryMercadoPago),
-            mp_refunded: mpRefunded,
+            provider_refund_attempted: Boolean(tryProvider),
+            provider_refunded: providerRefunded,
+            mp_refund_attempted: Boolean(tryProvider),
+            mp_refunded: providerRefunded,
             at: new Date().toISOString(),
           },
         })
@@ -108,5 +112,5 @@ export async function refundTicketLocally(args: {
 
   await notifySaleRefunded({ paymentId: paymentId ?? null, ticketId: ticket.id });
 
-  return { ok: true as const, mpRefunded, paymentId };
+  return { ok: true as const, mpRefunded: providerRefunded, providerRefunded, paymentId };
 }

@@ -60,6 +60,7 @@ export async function GET(request: Request) {
         mp_access_token: token.access_token,
         mp_collector_id: token.user_id != null ? String(token.user_id) : null,
         mp_connection_status: "connected",
+        primary_payment_provider: "mercado_pago",
       })
       .eq("id", organizer.id);
 

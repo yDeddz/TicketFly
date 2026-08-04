@@ -8,7 +8,7 @@ import {
   splitServiceFee,
   type FeeContract,
 } from "@/lib/fees";
-import { preferenceClient } from "@/lib/mercado-pago";
+import { createProviderCheckout, resolveCheckoutProvider } from "@/lib/payments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { checkoutSchema } from "@/lib/validators";
@@ -29,8 +29,11 @@ type OrganizerPayConfig = {
   fee_percent_upto_threshold: number | null;
   fee_percent_above_threshold: number | null;
   service_fee_platform_share_percent: number | null;
+  primary_payment_provider: string | null;
   mp_access_token: string | null;
   mp_connection_status: string | null;
+  asaas_wallet_id: string | null;
+  asaas_connection_status: string | null;
 };
 
 type ClaimedCoupon = {
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Name/email are collected on Mercado Pago. Prefer session profile when present.
+  // Name/email collected on provider checkout when missing. Prefer session profile when present.
   const buyerName =
     input.data.buyerName?.trim() ||
     (typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "") ||
@@ -92,7 +95,7 @@ export async function POST(request: Request) {
   const { data: eventRow } = await admin
     .from("events")
     .select(
-      "id,title,organizer_id,organizers(id,fee_threshold_cents,fee_percent_upto_threshold,fee_percent_above_threshold,service_fee_platform_share_percent,mp_access_token,mp_connection_status)",
+      "id,title,organizer_id,organizers(id,fee_threshold_cents,fee_percent_upto_threshold,fee_percent_above_threshold,service_fee_platform_share_percent,primary_payment_provider,mp_access_token,mp_connection_status,asaas_wallet_id,asaas_connection_status)",
     )
     .eq("id", reservation.event_id)
     .single();
@@ -158,9 +161,7 @@ export async function POST(request: Request) {
   const amountCents = ticketPriceCents + feeCents + insuranceCents;
   const netAmountCents = ticketPriceCents + partnerShareCents;
   const marketplaceFeeCents = platformShareCents + insuranceCents;
-
-  const useConnect =
-    organizer?.mp_connection_status === "connected" && Boolean(organizer.mp_access_token);
+  const resolvedProvider = resolveCheckoutProvider(organizer);
 
   const { data: payment, error: paymentError } = await admin
     .from("payments")
@@ -178,6 +179,7 @@ export async function POST(request: Request) {
       coupon_id: claimed?.coupon_id ?? null,
       net_amount_cents: netAmountCents,
       status: "pending",
+      provider: resolvedProvider.provider,
     })
     .select("id")
     .single();
@@ -222,72 +224,61 @@ export async function POST(request: Request) {
     });
   }
 
-  const eventTitle = eventRow?.title ?? "Ingresso Ticket Fly";
+  const statusUrl = `${appUrl()}/status/${payment.id}`;
 
-  const items = [
-    {
-      id: reservation.ticket_id,
-      title: eventTitle,
-      quantity: 1,
-      currency_id: "BRL" as const,
-      unit_price: ticketPriceCents / 100,
-    },
-    {
-      id: `${reservation.ticket_id}-fee`,
-      title: "Taxa de serviço",
-      quantity: 1,
-      currency_id: "BRL" as const,
-      unit_price: feeCents / 100,
-    },
-  ];
+  // Free tickets (R$0 total): skip provider and approve immediately.
+  if (amountCents === 0) {
+    const { error: freeApproveError } = await admin.rpc("apply_payment_status", {
+      p_payment_id: payment.id,
+      p_status: "approved",
+      p_provider_payment_id: `free_${payment.id}`,
+      p_payload: { source: "free_checkout", ticket_id: reservation.ticket_id },
+    });
 
-  if (insuranceCents > 0) {
-    items.push({
-      id: `${reservation.ticket_id}-insurance`,
-      title: "Seguro de compra",
-      quantity: 1,
-      currency_id: "BRL" as const,
-      unit_price: insuranceCents / 100,
+    if (freeApproveError) {
+      if (claimed) await admin.rpc("release_coupon_claim", { p_coupon_id: claimed.coupon_id });
+      await admin.rpc("release_reserved_ticket", { p_ticket_id: reservation.ticket_id });
+      await admin.from("payments").update({ status: "cancelled" }).eq("id", payment.id);
+      return NextResponse.json({ error: "Erro ao liberar ingresso gratuito" }, { status: 500 });
+    }
+
+    await admin.from("payments").update({ checkout_url: statusUrl }).eq("id", payment.id);
+
+    return NextResponse.json({
+      paymentId: payment.id,
+      ticketCode: reservation.ticket_code,
+      checkoutUrl: statusUrl,
+      free: true,
     });
   }
 
-  let preference;
+  const eventTitle = eventRow?.title ?? "Ingresso Ticket Fly";
+
+  let checkout;
 
   try {
-    const sellerToken = useConnect ? organizer!.mp_access_token! : undefined;
-    preference = await preferenceClient(payment.id, sellerToken).create({
-      body: {
-        external_reference: payment.id,
-        notification_url: `${appUrl()}/api/webhooks/mercado-pago?source_news=webhooks`,
-        back_urls: {
-          success: `${appUrl()}/status/${payment.id}`,
-          pending: `${appUrl()}/status/${payment.id}`,
-          failure: `${appUrl()}/status/${payment.id}`,
-        },
-        auto_return: "approved",
-        items: items.filter((item) => item.unit_price > 0),
-        ...(useConnect && marketplaceFeeCents > 0
-          ? { marketplace_fee: marketplaceFeeCents / 100 }
-          : {}),
-        // Prefill only when we already know the buyer (logged-in). Otherwise MP collects it.
-        ...(user?.email
-          ? {
-              payer: {
-                name: buyerName !== "Comprador" ? buyerName : undefined,
-                email: user.email,
-              },
-            }
-          : {}),
-        metadata: {
-          payment_id: payment.id,
-          ticket_id: reservation.ticket_id,
-          insurance_selected: insuranceSelected,
-          platform_fee_share_cents: platformShareCents,
-          partner_fee_share_cents: partnerShareCents,
-          discount_cents: discountCents,
-          coupon_id: claimed?.coupon_id ?? null,
-          connect: useConnect,
-        },
+    checkout = await createProviderCheckout(organizer, {
+      paymentId: payment.id,
+      ticketId: reservation.ticket_id,
+      eventTitle,
+      amountCents,
+      ticketPriceCents,
+      feeCents,
+      insuranceCents,
+      netAmountCents,
+      marketplaceFeeCents,
+      buyerName,
+      buyerEmail,
+      buyerUserEmail: user?.email ?? null,
+      statusUrl,
+      metadata: {
+        payment_id: payment.id,
+        ticket_id: reservation.ticket_id,
+        insurance_selected: insuranceSelected,
+        platform_fee_share_cents: platformShareCents,
+        partner_fee_share_cents: partnerShareCents,
+        discount_cents: discountCents,
+        coupon_id: claimed?.coupon_id ?? null,
       },
     });
   } catch {
@@ -297,26 +288,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Erro ao iniciar checkout" }, { status: 502 });
   }
 
-  const checkoutUrl = preference.init_point ?? preference.sandbox_init_point;
-
-  if (!checkoutUrl) {
-    if (claimed) await admin.rpc("release_coupon_claim", { p_coupon_id: claimed.coupon_id });
-    await admin.rpc("release_reserved_ticket", { p_ticket_id: reservation.ticket_id });
-    await admin.from("payments").update({ status: "cancelled" }).eq("id", payment.id);
-    return NextResponse.json({ error: "Checkout indisponível" }, { status: 502 });
-  }
-
   await admin
     .from("payments")
     .update({
-      provider_preference_id: preference.id,
-      checkout_url: checkoutUrl,
+      provider: checkout.provider,
+      provider_preference_id: checkout.providerPreferenceId ?? null,
+      provider_payment_id: checkout.providerPaymentId ?? null,
+      checkout_url: checkout.checkoutUrl,
     })
     .eq("id", payment.id);
 
   return NextResponse.json({
     paymentId: payment.id,
     ticketCode: reservation.ticket_code,
-    checkoutUrl,
+    checkoutUrl: checkout.checkoutUrl,
+    provider: checkout.provider,
   });
 }

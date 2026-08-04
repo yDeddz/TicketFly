@@ -37,6 +37,11 @@ create table public.organizers (
   mp_collector_id text,
   mp_access_token text,
   mp_connection_status public.mp_connection_status not null default 'disconnected',
+  primary_payment_provider text not null default 'mercado_pago',
+  asaas_account_id text,
+  asaas_wallet_id text,
+  asaas_api_key text,
+  asaas_connection_status public.mp_connection_status not null default 'disconnected',
   webhook_url text,
   webhook_secret text,
   webhook_enabled boolean not null default false,
@@ -56,6 +61,7 @@ create table public.organizers (
   constraint organizers_fee_upto_range check (fee_percent_upto_threshold >= 0 and fee_percent_upto_threshold <= 40),
   constraint organizers_fee_above_range check (fee_percent_above_threshold >= 0 and fee_percent_above_threshold <= 40),
   constraint organizers_fee_share_range check (service_fee_platform_share_percent >= 0 and service_fee_platform_share_percent <= 100),
+  constraint organizers_primary_payment_provider_check check (primary_payment_provider in ('mercado_pago', 'asaas')),
   constraint organizers_webhook_url_format check (
     webhook_url is null
     or webhook_url ~* '^https://'
