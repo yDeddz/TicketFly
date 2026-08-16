@@ -27,7 +27,7 @@ Em produção, sandbox Asaas e token de webhook ausente **bloqueiam** chamadas A
 ### Opcionais
 
 ```txt
-CRON_SECRET=...                 # fallback manual: protege a rota HTTP de expiração
+CRON_SECRET=...                 # obrigatório: mesmo valor no job externo e na Vercel
 ALLOW_LEGACY_HEX_QR=false       # default em prod: legado hex desligado
 MERCADO_PAGO_CLIENT_ID=...      # MP Connect organizador
 MERCADO_PAGO_CLIENT_SECRET=...
@@ -44,20 +44,19 @@ Sem webhook correto, pagamentos ficam `pending` e o QR não libera.
 
 ## Reservas órfãs
 
-O Supabase Cron executa diretamente no banco a cada 10 minutos:
+O plano Vercel é **Hobby**: cron `*/10` no `vercel.json` **falha o deploy**.
+O agendamento a cada 10 minutos é um **site externo** batendo na rota HTTP.
 
-```sql
-select public.expire_stale_reservations(30);
+```txt
+GET ou POST https://ticket-fly.vercel.app/api/cron/expire-reservations
+Authorization: Bearer <CRON_SECRET>
+# ou: x-cron-secret: <CRON_SECRET>
 ```
 
-Configuração: migration `20260808111613_schedule_expire_stale_reservations.sql`.
-Monitore em **Supabase Dashboard → Integrations → Cron** ou na tabela
-`cron.job_run_details`.
+A rota chama `select public.expire_stale_reservations(30);` no Supabase do yDeddz.
+A função vem de `20260804160000_expire_stale_reservations.sql`. Não usar `pg_cron`.
 
-A rota `/api/cron/expire-reservations` e o `CRON_SECRET` permanecem como
-fallback. O projeto na Vercel está no plano Hobby, que só aceita cron **uma
-vez por dia** — `vercel.json` chama essa rota às 06:00 UTC. Expiração a cada
-10 minutos continua no Supabase Cron (`pg_cron`).
+Mapa completo (hosts, env, Auth, Asaas): [`AMBIENTE.md`](AMBIENTE.md).
 
 ## Ambiente de testes (homologação)
 
@@ -68,7 +67,7 @@ vez por dia** — `vercel.json` chama essa rota às 06:00 UTC. Expiração a cad
 5. No SQL Editor: rode `supabase/seed_test_ops.sql`.
 6. Abra `/eventos/ops-teste-agosto`. Cupom `TESTE10`. Promotor `?ref=OPSTESTE`.
 7. Compre, confirme webhook, abra o QR, valide em `/checkin`.
-8. Aplique as migrations pendentes de porta e expiração de reserva antes de vender na entrada.
+8. yDeddz aplica no SQL Editor do TicketFly a função `expire_stale_reservations` e a migration de porta (não o `pg_cron`). Ver [`AMBIENTE.md`](AMBIENTE.md).
 
 Passo a passo compartilhado (Leonardo + yDeddz, calendário até 31/08): [`PLANO-GO-LIVE.md`](PLANO-GO-LIVE.md).
 
@@ -104,4 +103,4 @@ update public.users set role = 'admin' where email = 'seu@email.com';
 | QR “expirado” na porta | Pedir atualizar tela do ingresso (TTL ~90s) |
 | “QR legado não aceito” | Usar QR ao vivo `PP1.*` ou código manual |
 | Reembolso “parcial” | Ingresso cancelado localmente; estornar manualmente no MP/Asaas |
-| Estoque travado | Rodar cron `expire-reservations` |
+| Estoque travado | Conferir job externo + `CRON_SECRET` + função SQL (docs/AMBIENTE.md) |

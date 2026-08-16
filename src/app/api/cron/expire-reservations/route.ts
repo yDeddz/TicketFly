@@ -4,9 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 /**
- * Cron/manual job: expire abandoned pending reservations.
- * Protect with CRON_SECRET header: Authorization: Bearer <CRON_SECRET>
- * Or x-cron-secret: <CRON_SECRET>
+ * Expire abandoned pending reservations.
+ * Production scheduler is an external cron (Vercel Hobby cannot run */10).
+ * Protect with CRON_SECRET: Authorization: Bearer <CRON_SECRET>
+ * or x-cron-secret: <CRON_SECRET>
  */
 export async function POST(request: Request) {
   const requestId = createRequestId(request);

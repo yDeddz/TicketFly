@@ -1,5 +1,6 @@
--- Supabase Cron: free database-native scheduler for abandoned reservations.
--- Runs every 10 minutes and expires reservations older than 30 minutes.
+-- OPCIONAL / NÃO aplicar em produção TicketFly.
+-- O combinado é cron HTTP externo (Hobby da Vercel não agenda */10).
+-- Ver docs/AMBIENTE.md. Aplicar isto duplica o expire_stale_reservations.
 
 create extension if not exists pg_cron with schema pg_catalog;
 

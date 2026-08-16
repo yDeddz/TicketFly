@@ -1,4 +1,6 @@
-# Plano de go-live — TicketFly
+ 
+ 
+ # Plano de go-live — TicketFly
 
 Documento para **Leonardo (ops/plataforma)** e **yDeddz (dono do repo e do domínio)**.  
 Meta: vender e validar ingresso de verdade até **31/08/2026**.
@@ -7,13 +9,15 @@ Site público: [https://ticket-fly.vercel.app](https://ticket-fly.vercel.app)
 Repo certo: `github.com/yDeddz/TicketFly`  
 Não usar: `realg333/ticketfly` nem `ticketfly.vercel.app` (cópia antiga).
 
+Mapa do ambiente (Vercel Hobby, Supabase do yDeddz, cron externo, webhooks): [`AMBIENTE.md`](AMBIENTE.md).
+
 ---
 
 ## Quem faz o quê
 
 | Pessoa | Papel | O que é responsabilidade dela |
 |---|---|---|
-| **yDeddz** | Dono do GitHub + Vercel do domínio | Push/merge, env na Vercel, webhook no Asaas/MP apontando para `ticket-fly.vercel.app`, domínio e deploy |
+| **yDeddz** | Dono do GitHub + Vercel Hobby + Supabase TicketFly | Env Production, webhook Asaas, Auth URLs, job de cron **externo**, SQL no projeto `cbgcukhyytifirlvoygr` |
 | **Leonardo** | Ops da plataforma + código | Admin no painel, contrato da casa, checklist, seed de teste, conferir compra → QR → check-in |
 | **Casa / organizador** | Quem vende o evento | Conectar Asaas (ou MP), criar evento + lote, publicar, ensaiar porta |
 
@@ -21,9 +25,7 @@ Se a “casa” for o próprio yDeddz, ele faz as duas colunas (GitHub e organiz
 
 ---
 
-## O que já existe no código (local)
-
-Isto **já está neste repo**, mas **ainda não está no ar** até dar push:
+## O que já existe no código (e no ar em ticket-fly.vercel.app)
 
 - Compra com nome/e-mail reais → pagamento → QR rotativo (~90s) + código manual
 - Check-in por câmera ou código `XXXX-XXXX`
@@ -45,7 +47,7 @@ O que **ainda não existe** (não bloquear o 1º evento):
 |---|---|---|
 | **16–18/08** | Subir o código, env Vercel, admin no banco, 1 compra teste | yDeddz + Leonardo |
 | **19–22/08** | Webhook Asaas (e MP se for usar), casa conecta provedor, evento + lote publicados | yDeddz + casa |
-| **23–26/08** | Porta: PIX na entrada, reembolso de 1 ingresso teste, cron de reservas | casa + Leonardo |
+| **23–26/08** | Porta: PIX na entrada, reembolso de 1 ingresso teste; conferir cron **externo** | casa + Leonardo |
 | **27–29/08** | Ensaio de porta: 1 pago, 1 recusa, 1 QR duplicado, 1 código manual | os dois + operador |
 | **30–31/08** | Go / no-go. Sem webhook verde, **não** abre venda pública | os dois |
 
@@ -53,16 +55,13 @@ O que **ainda não existe** (não bloquear o 1º evento):
 
 ## Passo a passo
 
-### 1) Subir o código (yDeddz + Leonardo)
+### 1) Código e env (já no GitHub `main`)
 
-Hoje o site no ar ainda é a versão antiga. Sem este passo, nada do que fizemos aparece.
+O deploy Hobby **não** pode ter cron `*/10` no `vercel.json` — isso derruba o build. O agendamento de 10 min é o **site externo** ([`AMBIENTE.md`](AMBIENTE.md)).
 
-1. Revisar o que está uncommitted neste repo (`yDeddz/TicketFly`).
-2. Commit + **push para `yDeddz/TicketFly` `main`**.
-3. Confirmar na Vercel do yDeddz que o projeto aponta para **esse** repo.
-4. Abrir [ticket-fly.vercel.app](https://ticket-fly.vercel.app) em aba anônima e ver se a FAQ ainda fala só “Mercado Pago”. Se falar, o deploy não pegou este código.
+Conferir: [ticket-fly.vercel.app/ajuda](https://ticket-fly.vercel.app/ajuda) fala Pix/cartão (não só Mercado Pago).
 
-Env **obrigatório na Vercel** (Production), mesmo valor da ideia do `.env.local`:
+Env **obrigatório na Vercel** (Production) — **os mesmos nomes** do `.env.local`, apontando para o Supabase `cbgcukhyytifirlvoygr`:
 
 ```txt
 NEXT_PUBLIC_APP_URL=https://ticket-fly.vercel.app
@@ -85,13 +84,16 @@ MERCADO_PAGO_WEBHOOK_SECRET=...
 
 Conferir: `ASAAS_API_URL` em produção **não** pode ser sandbox.
 
-### 2) Banco (Leonardo, SQL Editor do Supabase do TicketFly)
+### 2) Banco (SQL Editor do Supabase **do yDeddz**, projeto TicketFly)
 
-Migrations que precisam estar aplicadas (senão porta e expiração de reserva quebram):
+Não usar o projeto `DIRETORIA DOS MLK`. Leonardo não tem API nesse banco — o yDeddz cola o SQL.
 
-- `supabase/migrations/20260804160000_expire_stale_reservations.sql`
-- `supabase/migrations/20260808111613_schedule_expire_stale_reservations.sql`
+Obrigatórias (senão porta e o cron HTTP quebram):
+
+- `supabase/migrations/20260804160000_expire_stale_reservations.sql` (função que o cron externo chama)
 - `supabase/migrations/20260808112824_door_sales_atomic_flow.sql`
+
+**Não** aplicar `20260808111613_schedule_expire_stale_reservations.sql` — o combinado é cron externo, não `pg_cron`.
 
 Primeiro admin (trocar o e-mail):
 
@@ -182,6 +184,8 @@ No celular, no local (ou simulando Wi-Fi ruim):
 - [ ] Evento **publicado** com lote ativo
 - [ ] Check-in testado no celular
 - [ ] `TICKET_QR_SECRET` na Vercel **não** vai ser trocado no meio das vendas
+- [ ] Cron externo 10 min no host certo, com o mesmo `CRON_SECRET` da Vercel
+- [ ] Auth URLs do Supabase incluem `ticket-fly.vercel.app` (ver [`AMBIENTE.md`](AMBIENTE.md))
 
 **Não abrir se:** pagamento confirma no Asaas e o QR não libera.
 
@@ -212,7 +216,7 @@ No celular, no local (ou simulando Wi-Fi ruim):
 |---|---|
 | Paguei e o ingresso não aparece | `/status/[id]` → “Já paguei”. Se continuar: webhook/token |
 | QR “expirado” na fila | Atualizar a tela do ingresso (gira a cada ~90s) ou usar o código manual |
-| Estoque “sumiu” sem venda | Reservas órfãs — cron `expire_stale_reservations` / rota `/api/cron/expire-reservations` |
+| Estoque “sumiu” sem venda | Cron externo 401/errado, ou falta a função SQL — ver [`AMBIENTE.md`](AMBIENTE.md) |
 | Reembolso “parcial” | Ingresso já cancelado na TicketFly; estornar na mão no Asaas/MP |
 | Operador não entra no check-in | Tem que ser `admin`, `organizer` aprovado, ou papel `checkin` em `/admin/equipe` |
 
@@ -222,8 +226,8 @@ Runbook técnico (env, secret, cron): [`docs/RUNBOOK.md`](RUNBOOK.md).
 
 ## Combinado entre os dois
 
-1. yDeddz sobe o repo e trava o domínio/`APP_URL`.
-2. Leonardo libera admin + contrato.
+1. yDeddz trava o mapa em [`AMBIENTE.md`](AMBIENTE.md) (Vercel env, Auth URLs, webhook Asaas, cron externo).
+2. Leonardo libera admin + contrato no banco do yDeddz.
 3. Casa conecta Asaas e publica o evento.
 4. Os dois fazem **uma** compra real pequena e **um** check-in antes de anunciar.
 5. Só então divulga o link da vitrine.

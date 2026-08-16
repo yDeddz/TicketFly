@@ -235,11 +235,12 @@ Passo a passo para Leonardo + yDeddz até 31/08: [`docs/PLANO-GO-LIVE.md`](docs/
 
 ### Cron de reservas
 
-O Supabase Cron chama `expire_stale_reservations(30)` diretamente no banco a
-cada 10 minutos. A migration
-`20260808111613_schedule_expire_stale_reservations.sql` habilita o `pg_cron`
-e cria o job. A rota HTTP protegida por `CRON_SECRET` fica como fallback:
-na Vercel Hobby o cron só pode rodar uma vez por dia (`vercel.json`).
+O plano Vercel é Hobby: **não** coloque cron `*/10` no `vercel.json`.
+Um site externo chama `GET/POST /api/cron/expire-reservations` a cada 10
+minutos com `Authorization: Bearer $CRON_SECRET`. A função SQL
+`expire_stale_reservations` precisa existir no Supabase do yDeddz.
+
+Mapa do ambiente: [`docs/AMBIENTE.md`](docs/AMBIENTE.md).
 
 ## Melhorias Futuras
 

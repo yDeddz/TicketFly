@@ -9,16 +9,16 @@ Meta: vender e validar ingresso até 31/08. Trabalho local neste repo (`yDeddz/T
 - Painel do organizador: eventos, lotes, cupons, promotores, reembolsos, webhooks
 - Admin: contratos e taxa
 - Vendas na porta (Asaas) + página `/pagar/[token]`
-- Expiração de reservas (pg_cron + rota HTTP)
+- Expiração de reservas: cron **externo** → `/api/cron/expire-reservations` (Hobby)
 
 ## Blockers para o mês
 
 | Prioridade | Item | Ação |
 |---|---|---|
-| P0 | Código ainda não está no ar do yDeddz | Push para `yDeddz/TicketFly` — `ticket-fly.vercel.app` só atualiza depois |
-| P0 | `NEXT_PUBLIC_APP_URL` | Já aponta para `https://ticket-fly.vercel.app` (webhooks/QR) |
-| P0 | Migrations de porta + cron ainda não commitadas | Aplicar no Supabase do TicketFly e subir o código |
-| P0 | Webhooks MP/Asaas | Sem isso o pagamento fica `pending` e o QR não sai |
+| P0 | Env Vercel = `.env.local` no Supabase `cbgcukhyytifirlvoygr` | Ver [`AMBIENTE.md`](AMBIENTE.md) — nunca DIRETORIA DOS MLK |
+| P0 | Cron externo 10 min + `CRON_SECRET` igual na Vercel | Sem header = 401 e estoque trava |
+| P0 | Função SQL `expire_stale_reservations` + migration de porta | SQL Editor do yDeddz; **não** aplicar `pg_cron` |
+| P0 | Webhook Asaas em `ticket-fly.vercel.app` | Sem isso o pagamento fica `pending` e o QR não sai |
 | P1 | Primeiro admin | `update public.users set role = 'admin' where email = '...'` |
 | P1 | Vendas na porta | Organizador precisa conectar Asaas |
 | P2 | E-mail de ingresso | Ainda não há envio transacional — comprador usa `/status` e `/painel` |
@@ -32,7 +32,7 @@ Meta: vender e validar ingresso até 31/08. Trabalho local neste repo (`yDeddz/T
 - Novo contrato envia e-mail de senha
 - Proteção de compra passa a ser opt-in, com aviso de que não é apólice
 - Seed + `npm run ops:check` + testes de taxa/checkout/provedor
-- Cron HTTP no `vercel.json` como rede de segurança
+- Cron HTTP para o site externo (Hobby não agenda `*/10`)
 
 ## Organizador (painel /organizador)
 
@@ -52,7 +52,7 @@ Meta: vender e validar ingresso até 31/08. Trabalho local neste repo (`yDeddz/T
 
 ## Domínio
 
-O site público do yDeddz é `https://ticket-fly.vercel.app`. Mudança local **não** aparece lá até dar push em `yDeddz/TicketFly`.
+O site público do yDeddz é `https://ticket-fly.vercel.app`. Mapa de env/cron/webhooks: [`AMBIENTE.md`](AMBIENTE.md).
 
 Passo a passo compartilhado: [`PLANO-GO-LIVE.md`](PLANO-GO-LIVE.md).
 
