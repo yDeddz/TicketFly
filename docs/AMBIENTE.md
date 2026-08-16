@@ -19,6 +19,8 @@ O `.env.local` desta pasta é espelho disso (mesmo Supabase). `npm run dev` fala
 
 Hobby não deixa convidar o Leonardo no time Vercel. Código sobe por **push no GitHub**. Env na Vercel o André cola em massa (abaixo). Pro é opcional.
 
+O `vercel.json` mantém um cron **diário** (Hobby aceita 1×/dia) só para o deploy não quebrar; o job de 10 min continua no site externo.
+
 ## Env em massa na Vercel do André
 
 Sim: a Vercel aceita [upload/cola de um `.env` inteiro](https://vercel.com/changelog/bulk-upload-now-available-for-environment-variables).
