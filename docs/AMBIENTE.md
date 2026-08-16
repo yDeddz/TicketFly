@@ -15,9 +15,69 @@ Se algo “não comunica” (webhook, login, cron, QR), é quase sempre um apont
 | Cron 10 min | **site externo** → rota HTTP (abaixo) | Cron da Vercel (`vercel.json`) — Hobby só aceita 1×/dia e **quebra o deploy** se for `*/10` |
 | `NEXT_PUBLIC_APP_URL` | `https://ticket-fly.vercel.app` | localhost no env de Production da Vercel |
 
-O `.env.local` desta pasta **já aponta** para esse Supabase e para `ticket-fly.vercel.app`. Ou seja: `npm run dev` fala com o **banco de produção**. Seed/SQL aqui valem no site ao vivo.
+Fonte da verdade do **ar** = Vercel do yDeddz (time `ticket-fly`) + Supabase do yDeddz.  
+O `.env.local` desta pasta é **espelho** disso (já aponta para `ticket-fly.vercel.app` e `cbgcukhyytifirlvoygr`). `npm run dev` fala com o banco de produção.
 
-Leonardo **não** tem permissão no MCP/API desse Supabase. Alteração de schema = SQL Editor na conta do yDeddz, ou convite de membro no projeto.
+A Vercel `ticketfly` / `realg333's projects` **não entra** em deploy, env nem teste.
+
+## Como alinhamos na prática
+
+Hoje o Leonardo tem write no GitHub, mas **não** está no time Vercel `ticket-fly` nem no Supabase TicketFly (API). Sem esses dois convites, ninguém daqui consegue ler/editar env de produção — só o yDeddz no dashboard.
+
+### 1) yDeddz libera acesso (uma vez)
+
+**Vercel** (conta que tem o projeto [ticket-fly](https://vercel.com/ticket-fly/ticket-fly)):
+
+1. Team Settings → Members → Invite `leonardo.giancotti@gmail.com` como **Member**
+2. Confirmar que o Git do projeto é `yDeddz/TicketFly` / branch `main`
+3. Production → Environment Variables: os nomes da lista abaixo, **Production** (e Preview se quiser o mesmo banco)
+
+**Supabase** (projeto TicketFly, ref `cbgcukhyytifirlvoygr`):
+
+1. Project Settings → Members → Invite o mesmo e-mail como **Developer**
+2. Authentication → URL Configuration: Site URL + redirects desta página
+
+Manda no zap, se preferir:
+
+```txt
+Me adiciona no time Vercel ticket-fly (Member) e no Supabase do TicketFly (Developer).
+O site de verdade é só ticket-fly.vercel.app — a Vercel ticketfly do Leonardo a gente ignora.
+```
+
+### 2) Depois do convite (Leonardo)
+
+1. Aceitar e-mail da Vercel e do Supabase
+2. Reconectar o MCP/login da Vercel nesta máquina
+3. **Não** rodar `vercel link` no projeto `ticketfly` do realg333
+4. Se for linkar CLI: time `ticket-fly`, projeto `ticket-fly` (Hobby)
+5. `npm run ops:check` — tem que mostrar host `ticket-fly.vercel.app` e ref `cbgcukhyytifirlvoygr`
+
+Aí dá para conferir env Production, logs de deploy e SQL sem o yDeddz colar segredo no chat.
+
+### 3) Conferência que o yDeddz faz sozinho (se o convite atrasar)
+
+No dashboard **dele**, projeto `ticket-fly` → Settings → Environment Variables → Production:
+
+| Variável | Tem que ser |
+|---|---|
+| `NEXT_PUBLIC_APP_URL` | `https://ticket-fly.vercel.app` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://cbgcukhyytifirlvoygr.supabase.co` |
+| `ASAAS_API_URL` | `https://api.asaas.com` |
+| `CRON_SECRET` | o **mesmo** do job no site externo |
+| `ASAAS_WEBHOOK_TOKEN` | o **mesmo** do webhook no Asaas |
+| resto da lista abaixo | preenchido, sem sandbox |
+
+Deploy: só o que o GitHub `yDeddz/TicketFly` `main` dispara nesse projeto. Ninguém dá `vercel --prod` pela conta do Leonardo.
+
+### 4) Comunicação (Asaas + cron + Auth)
+
+Tudo aponta para o host da Vercel **dele**:
+
+- Webhook Asaas → `https://ticket-fly.vercel.app/api/webhooks/asaas`
+- Cron externo → `https://ticket-fly.vercel.app/api/cron/expire-reservations`
+- Login/recovery → `https://ticket-fly.vercel.app/auth/callback` (Supabase)
+
+Se qualquer um desses URLs for `ticketfly.vercel.app` (sem hífen) ou um `*.vercel.app` de preview, o pagamento/cron/login “não comunica”.
 
 ## Quem aponta para quem
 
@@ -118,6 +178,7 @@ O check **Supabase Preview** no GitHub (`Remote migration versions not found in 
 
 ## Checklist de comunicação (os dois)
 
+- [ ] Leonardo está no time Vercel **ticket-fly** (não no `ticketfly` dele)
 - [ ] Site aberto = `ticket-fly.vercel.app` (FAQ já fala Pix/cartão)
 - [ ] Vercel Production com `NEXT_PUBLIC_APP_URL` e Supabase **TicketFly** (não outro projeto)
 - [ ] `CRON_SECRET` Vercel = header do job externo; job no host certo

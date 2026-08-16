@@ -17,7 +17,7 @@ Mapa do ambiente (Vercel Hobby, Supabase do yDeddz, cron externo, webhooks): [`A
 
 | Pessoa | Papel | O que é responsabilidade dela |
 |---|---|---|
-| **yDeddz** | Dono do GitHub + Vercel Hobby + Supabase TicketFly | Env Production, webhook Asaas, Auth URLs, job de cron **externo**, SQL no projeto `cbgcukhyytifirlvoygr` |
+| **yDeddz** | Dono: GitHub + **Vercel `ticket-fly`** + Supabase TicketFly | Convidar Leonardo nesses dois; env Production; webhook Asaas; Auth URLs; cron externo; SQL |
 | **Leonardo** | Ops da plataforma + código | Admin no painel, contrato da casa, checklist, seed de teste, conferir compra → QR → check-in |
 | **Casa / organizador** | Quem vende o evento | Conectar Asaas (ou MP), criar evento + lote, publicar, ensaiar porta |
 
@@ -226,8 +226,8 @@ Runbook técnico (env, secret, cron): [`docs/RUNBOOK.md`](RUNBOOK.md).
 
 ## Combinado entre os dois
 
-1. yDeddz trava o mapa em [`AMBIENTE.md`](AMBIENTE.md) (Vercel env, Auth URLs, webhook Asaas, cron externo).
-2. Leonardo libera admin + contrato no banco do yDeddz.
-3. Casa conecta Asaas e publica o evento.
-4. Os dois fazem **uma** compra real pequena e **um** check-in antes de anunciar.
-5. Só então divulga o link da vitrine.
+1. yDeddz convida Leonardo no time Vercel `ticket-fly` e no Supabase TicketFly ([`AMBIENTE.md`](AMBIENTE.md)).
+2. Os dois travam env/webhook/cron **só** em `ticket-fly.vercel.app`.
+3. Leonardo libera admin + contrato no banco do yDeddz.
+4. Casa conecta Asaas e publica o evento.
+5. Os dois fazem **uma** compra real pequena e **um** check-in antes de anunciar.
