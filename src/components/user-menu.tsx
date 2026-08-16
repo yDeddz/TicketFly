@@ -4,6 +4,7 @@ import {
   ChevronDown,
   LayoutDashboard,
   LogOut,
+  QrCode,
   Shield,
   Ticket,
   UserRound,
@@ -77,6 +78,7 @@ export function UserMenu({ user }: { user: AuthUserSummary | null }) {
 
   const isAdmin = user.role === "admin";
   const isOrganizer = user.role === "organizer" || isAdmin;
+  const canCheckin = isAdmin || user.role === "organizer" || user.role === "checkin";
 
   return (
     <div className="relative" ref={rootRef}>
@@ -140,6 +142,18 @@ export function UserMenu({ user }: { user: AuthUserSummary | null }) {
               Quero ser parceiro
             </Link>
           )}
+
+          {canCheckin ? (
+            <Link
+              href="/checkin"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-white/75 transition-colors duration-200 hover:bg-white/5 hover:text-white"
+            >
+              <QrCode className="h-4 w-4 text-[#ff1493]" />
+              Check-in da porta
+            </Link>
+          ) : null}
 
           {isAdmin ? (
             <Link

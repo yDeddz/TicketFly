@@ -62,16 +62,8 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Name/email collected on provider checkout when missing. Prefer session profile when present.
-  const buyerName =
-    input.data.buyerName?.trim() ||
-    (typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "") ||
-    (typeof user?.user_metadata?.name === "string" ? user.user_metadata.name.trim() : "") ||
-    "Comprador";
-  const buyerEmail =
-    input.data.buyerEmail?.trim() ||
-    user?.email?.trim() ||
-    `pending+${crypto.randomUUID().slice(0, 8)}@checkout.ticketfly.app`;
+  const buyerName = input.data.buyerName.trim();
+  const buyerEmail = input.data.buyerEmail.trim().toLowerCase();
 
   const admin = createAdminClient();
   const { data: reservationData, error: reservationError } = await admin

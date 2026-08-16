@@ -15,6 +15,9 @@ export type OrganizerSummary = {
   fee_percent_above_threshold?: number;
   service_fee_platform_share_percent?: number;
   mp_connection_status?: MpConnectionStatus;
+  asaas_connection_status?: MpConnectionStatus;
+  asaas_wallet_id?: string | null;
+  primary_payment_provider?: string | null;
   webhook_enabled?: boolean;
 };
 

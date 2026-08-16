@@ -1,10 +1,64 @@
 import { z } from "zod";
 
+export function normalizeCpf(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+export function isValidCpf(value: string) {
+  const cpf = normalizeCpf(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  const digit = (length: number) => {
+    let sum = 0;
+    for (let index = 0; index < length; index += 1) {
+      sum += Number(cpf[index]) * (length + 1 - index);
+    }
+    const remainder = (sum * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+
+  return digit(9) === Number(cpf[9]) && digit(10) === Number(cpf[10]);
+}
+
+export function normalizeBrazilianPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("55") && digits.length >= 12) return digits.slice(2);
+  return digits;
+}
+
+const cpfSchema = z
+  .string()
+  .trim()
+  .transform(normalizeCpf)
+  .refine(isValidCpf, "CPF inválido");
+
+const brazilianPhoneSchema = z
+  .string()
+  .trim()
+  .transform(normalizeBrazilianPhone)
+  .refine((phone) => phone.length === 10 || phone.length === 11, "Celular inválido");
+
+export const doorSaleSchema = z.object({
+  eventId: z.string().uuid(),
+  batchId: z.string().uuid(),
+  buyerName: z.string().trim().min(2, "Informe o nome completo").max(120),
+  buyerEmail: z.string().trim().toLowerCase().email("E-mail inválido").max(160),
+  buyerCpf: cpfSchema,
+  buyerPhone: brazilianPhoneSchema,
+  paymentMethod: z.enum(["pix", "credit_card"]),
+  idempotencyKey: z.string().uuid(),
+});
+
 export const checkoutSchema = z.object({
   batchId: z.string().uuid(),
-  // Buyer identity is collected on Mercado Pago Checkout Pro.
-  buyerName: z.string().trim().min(2).max(120).optional(),
-  buyerEmail: z.string().trim().email().max(160).optional(),
+  buyerName: z.string().trim().min(2, "Informe o nome completo").max(120),
+  buyerEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("E-mail inválido")
+    .max(160)
+    .refine((email) => !email.endsWith("@checkout.ticketfly.app"), "Informe um e-mail real"),
   promoterCode: z.string().trim().max(40).optional().or(z.literal("")),
   couponCode: z.string().trim().max(40).optional().or(z.literal("")),
   insuranceSelected: z.boolean().optional().default(false),
@@ -146,6 +200,11 @@ export const organizerApplySchema = z.object({
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   city: z.string().trim().max(100).optional().or(z.literal("")),
   feeNote: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export const adminStaffSchema = z.object({
+  email: z.string().trim().toLowerCase().email("E-mail inválido"),
+  role: z.enum(["checkin", "customer"]),
 });
 
 export const createContractSchema = z.object({

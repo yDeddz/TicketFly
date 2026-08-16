@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { SpecialText } from "@/components/ui/special-text";
+import { mapAuthErrorMessage } from "@/lib/client-errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type AuthMode = "login" | "signup" | "forgot";
@@ -65,7 +66,7 @@ export function LoginForm() {
       setLoading(false);
 
       if (resetError) {
-        setError(resetError.message);
+        setError(mapAuthErrorMessage(resetError.message));
         return;
       }
 
@@ -83,9 +84,7 @@ export function LoginForm() {
       setLoading(false);
 
       if (signInError) {
-        setError(signInError.message === "Invalid login credentials"
-          ? "E-mail ou senha incorretos."
-          : signInError.message);
+        setError(mapAuthErrorMessage(signInError.message));
         return;
       }
 
@@ -106,7 +105,7 @@ export function LoginForm() {
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(mapAuthErrorMessage(signUpError.message));
       return;
     }
 

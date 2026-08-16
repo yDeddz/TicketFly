@@ -127,13 +127,21 @@ create table public.payments (
   provider_preference_id text unique,
   provider_payment_id text unique,
   checkout_url text,
+  sales_channel text not null default 'online',
+  payment_method text,
+  created_by uuid references public.users(id) on delete set null,
+  idempotency_key uuid,
   raw_payload jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint payments_platform_fee_share_non_negative check (platform_fee_share_cents >= 0),
   constraint payments_partner_fee_share_non_negative check (partner_fee_share_cents >= 0),
   constraint payments_insurance_non_negative check (insurance_cents >= 0),
-  constraint payments_discount_non_negative check (discount_cents >= 0)
+  constraint payments_discount_non_negative check (discount_cents >= 0),
+  constraint payments_sales_channel_check check (sales_channel in ('online', 'door')),
+  constraint payments_payment_method_check check (
+    payment_method is null or payment_method in ('pix', 'credit_card')
+  )
 );
 
 create table public.tickets (
@@ -144,6 +152,7 @@ create table public.tickets (
   buyer_user_id uuid references public.users(id) on delete set null,
   buyer_name text not null,
   buyer_email citext not null,
+  buyer_phone text,
   code uuid not null default gen_random_uuid(),
   qr_token text not null unique default encode(gen_random_bytes(32), 'hex'),
   qr_version integer not null default 1,
@@ -270,6 +279,12 @@ create unique index tickets_manual_code_uidx on public.tickets (manual_code) whe
 create index tickets_manual_code_expires_idx on public.tickets (manual_code_expires_at) where manual_code is not null;
 create index payments_status_idx on public.payments(status);
 create index payments_provider_payment_idx on public.payments(provider_payment_id);
+create unique index payments_door_idempotency_idx
+  on public.payments(created_by, idempotency_key)
+  where idempotency_key is not null;
+create index payments_door_event_created_idx
+  on public.payments(event_id, created_at desc)
+  where sales_channel = 'door';
 create index checkins_event_created_idx on public.checkins(event_id, created_at desc);
 create index promoter_sales_promoter_idx on public.promoter_sales(promoter_id);
 create index coupons_organizer_idx on public.coupons(organizer_id);
@@ -439,6 +454,160 @@ begin
 end;
 $$;
 
+create or replace function public.create_door_sale(
+  p_organizer_id uuid,
+  p_batch_id uuid,
+  p_buyer_name text,
+  p_buyer_email text,
+  p_buyer_phone text,
+  p_payment_method text,
+  p_created_by uuid,
+  p_idempotency_key uuid
+)
+returns table(
+  payment_id uuid,
+  ticket_id uuid,
+  ticket_code uuid,
+  event_id uuid,
+  event_title text,
+  batch_name text,
+  ticket_price_cents integer,
+  fee_cents integer,
+  platform_share_cents integer,
+  partner_share_cents integer,
+  amount_cents integer,
+  net_amount_cents integer,
+  existing boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_existing public.payments%rowtype;
+  v_batch public.ticket_batches%rowtype;
+  v_event public.events%rowtype;
+  v_organizer public.organizers%rowtype;
+  v_ticket_id uuid;
+  v_ticket_code uuid;
+  v_payment_id uuid;
+  v_fee_percent numeric(5,2);
+  v_fee_cents integer;
+  v_platform_share_cents integer;
+  v_partner_share_cents integer;
+  v_amount_cents integer;
+  v_net_amount_cents integer;
+begin
+  if p_payment_method not in ('pix', 'credit_card') then
+    raise exception 'invalid_payment_method';
+  end if;
+
+  if p_idempotency_key is null then
+    raise exception 'idempotency_key_required';
+  end if;
+
+  select p.* into v_existing
+  from public.payments p
+  where p.created_by = p_created_by
+    and p.idempotency_key = p_idempotency_key
+  limit 1;
+
+  if found then
+    if v_existing.ticket_batch_id <> p_batch_id
+      or v_existing.payment_method <> p_payment_method then
+      raise exception 'idempotency_conflict';
+    end if;
+
+    return query
+    select
+      p.id, t.id, t.code, p.event_id, e.title, b.name, b.price_cents,
+      p.platform_fee_cents, p.platform_fee_share_cents,
+      p.partner_fee_share_cents, p.amount_cents, p.net_amount_cents, true
+    from public.payments p
+    join public.tickets t on t.payment_id = p.id
+    join public.events e on e.id = p.event_id
+    join public.ticket_batches b on b.id = p.ticket_batch_id
+    where p.id = v_existing.id;
+    return;
+  end if;
+
+  select * into v_batch
+  from public.ticket_batches
+  where id = p_batch_id
+  for update;
+
+  if not found then raise exception 'ticket_batch_not_found'; end if;
+
+  select * into v_event from public.events where id = v_batch.event_id;
+  if not found or v_event.organizer_id <> p_organizer_id then
+    raise exception 'event_not_owned';
+  end if;
+  if v_event.status <> 'published' then raise exception 'event_not_published'; end if;
+
+  select * into v_organizer
+  from public.organizers
+  where id = p_organizer_id and status = 'approved';
+  if not found then raise exception 'organizer_not_approved'; end if;
+
+  if not v_batch.is_active
+    or now() < v_batch.sales_start_at
+    or (v_batch.sales_end_at is not null and now() > v_batch.sales_end_at) then
+    raise exception 'ticket_batch_closed';
+  end if;
+  if (v_batch.quantity_reserved + v_batch.quantity_sold) >= v_batch.quantity_total then
+    raise exception 'ticket_batch_sold_out';
+  end if;
+
+  if v_batch.price_cents <= v_organizer.fee_threshold_cents then
+    v_fee_percent := v_organizer.fee_percent_upto_threshold;
+  else
+    v_fee_percent := v_organizer.fee_percent_above_threshold;
+  end if;
+  v_fee_cents := round(v_batch.price_cents * v_fee_percent / 100.0);
+  v_platform_share_cents := round(
+    v_fee_cents * v_organizer.service_fee_platform_share_percent / 100.0
+  );
+  v_partner_share_cents := v_fee_cents - v_platform_share_cents;
+  v_amount_cents := v_batch.price_cents + v_fee_cents;
+  v_net_amount_cents := v_batch.price_cents + v_partner_share_cents;
+
+  update public.ticket_batches
+  set quantity_reserved = quantity_reserved + 1
+  where id = v_batch.id;
+
+  insert into public.tickets (
+    event_id, ticket_batch_id, buyer_name, buyer_email, buyer_phone, amount_paid_cents
+  )
+  values (
+    v_event.id, v_batch.id, trim(p_buyer_name), lower(trim(p_buyer_email)),
+    p_buyer_phone, v_amount_cents
+  )
+  returning id, code into v_ticket_id, v_ticket_code;
+
+  insert into public.payments (
+    event_id, ticket_batch_id, amount_cents, platform_fee_cents,
+    platform_fee_share_cents, partner_fee_share_cents, insurance_cents,
+    insurance_selected, discount_cents, net_amount_cents, status, provider,
+    sales_channel, payment_method, created_by, idempotency_key, raw_payload
+  )
+  values (
+    v_event.id, v_batch.id, v_amount_cents, v_fee_cents,
+    v_platform_share_cents, v_partner_share_cents, 0, false, 0,
+    v_net_amount_cents, 'pending', 'asaas', 'door', p_payment_method,
+    p_created_by, p_idempotency_key,
+    jsonb_build_object('source', 'door_sale', 'provider_state', 'not_created')
+  )
+  returning id into v_payment_id;
+
+  update public.tickets set payment_id = v_payment_id where id = v_ticket_id;
+
+  return query select
+    v_payment_id, v_ticket_id, v_ticket_code, v_event.id, v_event.title,
+    v_batch.name, v_batch.price_cents, v_fee_cents, v_platform_share_cents,
+    v_partner_share_cents, v_amount_cents, v_net_amount_cents, false;
+end;
+$$;
+
 create or replace function public.release_reserved_ticket(p_ticket_id uuid)
 returns void
 language plpgsql
@@ -482,18 +651,41 @@ declare
   v_ticket public.tickets%rowtype;
   v_payment public.payments%rowtype;
 begin
-  select * into v_payment from public.payments where id = p_payment_id for update;
+  select * into v_payment
+  from public.payments
+  where id = p_payment_id
+  for update;
+
   if not found then
     raise exception 'payment_not_found';
   end if;
 
+  if v_payment.status = 'refunded' then
+    return;
+  end if;
+
+  if v_payment.status = 'approved' and p_status <> 'refunded' then
+    return;
+  end if;
+
+  if v_payment.status in ('rejected', 'cancelled')
+    and p_status not in ('rejected', 'cancelled', 'refunded') then
+    return;
+  end if;
+
   update public.payments
-  set status = p_status,
-      provider_payment_id = coalesce(p_provider_payment_id, provider_payment_id),
-      raw_payload = p_payload
+  set
+    status = p_status,
+    provider_payment_id = coalesce(p_provider_payment_id, provider_payment_id),
+    raw_payload = p_payload,
+    updated_at = now()
   where id = p_payment_id;
 
-  select * into v_ticket from public.tickets where payment_id = p_payment_id for update;
+  select * into v_ticket
+  from public.tickets
+  where payment_id = p_payment_id
+  for update;
+
   if not found then
     return;
   end if;
@@ -794,6 +986,9 @@ revoke all on function public.perform_checkin(text, uuid, text) from authenticat
 revoke all on function public.rotate_ticket_qr_token(uuid) from public, anon, authenticated;
 revoke all on function public.claim_coupon(uuid, uuid, uuid, integer) from public, anon, authenticated;
 revoke all on function public.release_coupon_claim(uuid) from public, anon, authenticated;
+revoke all on function public.create_door_sale(
+  uuid, uuid, text, text, text, text, uuid, uuid
+) from public, anon, authenticated;
 
 grant execute on function public.reserve_ticket(uuid, text, text, uuid, text) to service_role;
 grant execute on function public.release_reserved_ticket(uuid) to service_role;
@@ -802,3 +997,65 @@ grant execute on function public.perform_checkin(text, uuid, text) to service_ro
 grant execute on function public.rotate_ticket_qr_token(uuid) to service_role;
 grant execute on function public.claim_coupon(uuid, uuid, uuid, integer) to service_role;
 grant execute on function public.release_coupon_claim(uuid) to service_role;
+grant execute on function public.create_door_sale(
+  uuid, uuid, text, text, text, text, uuid, uuid
+) to service_role;
+
+-- Expire abandoned pending reservations (see migrations/20260804160000_expire_stale_reservations.sql)
+create or replace function public.expire_stale_reservations(p_older_than_minutes integer default 30)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count integer := 0;
+  v_row record;
+begin
+  if p_older_than_minutes is null or p_older_than_minutes < 5 then
+    raise exception 'ttl_too_short';
+  end if;
+
+  for v_row in
+    select
+      t.id as ticket_id,
+      t.ticket_batch_id,
+      t.payment_id,
+      p.coupon_id
+    from public.tickets t
+    left join public.payments p on p.id = t.payment_id
+    where t.status = 'pending'
+      and t.created_at < now() - make_interval(mins => p_older_than_minutes)
+    for update of t skip locked
+  loop
+    update public.tickets
+    set
+      status = 'cancelled',
+      cancelled_at = now(),
+      updated_at = now()
+    where id = v_row.ticket_id;
+
+    update public.ticket_batches
+    set quantity_reserved = greatest(quantity_reserved - 1, 0)
+    where id = v_row.ticket_batch_id;
+
+    if v_row.coupon_id is not null then
+      perform public.release_coupon_claim(v_row.coupon_id);
+    end if;
+
+    if v_row.payment_id is not null then
+      update public.payments
+      set status = 'cancelled'
+      where id = v_row.payment_id
+        and status = 'pending';
+    end if;
+
+    v_count := v_count + 1;
+  end loop;
+
+  return v_count;
+end;
+$$;
+
+revoke all on function public.expire_stale_reservations(integer) from public, anon, authenticated;
+grant execute on function public.expire_stale_reservations(integer) to service_role;

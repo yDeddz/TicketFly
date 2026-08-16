@@ -39,6 +39,7 @@ export async function refundTicketLocally(args: {
   }
 
   let providerRefunded = false;
+  let providerAttempted = false;
   const paymentId = ticket.payment_id;
 
   if (paymentId) {
@@ -54,6 +55,7 @@ export async function refundTicketLocally(args: {
       payment.provider_payment_id &&
       canAttemptProviderRefund(payment.provider)
     ) {
+      providerAttempted = true;
       providerRefunded = await refundViaProvider(payment.provider, payment.provider_payment_id);
     }
 
@@ -65,9 +67,9 @@ export async function refundTicketLocally(args: {
           raw_payload: {
             refunded_by: args.actorUserId,
             reason: args.reason ?? null,
-            provider_refund_attempted: Boolean(tryProvider),
+            provider_refund_attempted: providerAttempted,
             provider_refunded: providerRefunded,
-            mp_refund_attempted: Boolean(tryProvider),
+            mp_refund_attempted: providerAttempted,
             mp_refunded: providerRefunded,
             at: new Date().toISOString(),
           },
@@ -112,5 +114,12 @@ export async function refundTicketLocally(args: {
 
   await notifySaleRefunded({ paymentId: paymentId ?? null, ticketId: ticket.id });
 
-  return { ok: true as const, mpRefunded: providerRefunded, providerRefunded, paymentId };
+  return {
+    ok: true as const,
+    mpRefunded: providerRefunded,
+    providerRefunded,
+    providerAttempted,
+    partial: providerAttempted && !providerRefunded,
+    paymentId,
+  };
 }

@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   const { data: before } = await admin
     .from("payments")
-    .select("id,status")
+    .select("id,status,amount_cents,provider,provider_payment_id")
     .eq("id", localPaymentId)
     .maybeSingle();
 
@@ -60,18 +60,46 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pagamento local não encontrado" }, { status: 202 });
   }
 
-  await admin.rpc("apply_payment_status", {
+  if (before.provider !== "asaas") {
+    return NextResponse.json({ error: "Provedor do pagamento não confere" }, { status: 202 });
+  }
+
+  if (
+    before.provider_payment_id &&
+    before.provider_payment_id !== String(payment.id)
+  ) {
+    return NextResponse.json({ error: "Identificador do pagamento não confere" }, { status: 202 });
+  }
+
+  if (
+    typeof payment.value === "number" &&
+    Math.round(payment.value * 100) !== before.amount_cents
+  ) {
+    return NextResponse.json({ error: "Valor do pagamento não confere" }, { status: 202 });
+  }
+
+  const { error: applyError } = await admin.rpc("apply_payment_status", {
     p_payment_id: localPaymentId,
     p_status: mappedStatus,
     p_provider_payment_id: String(payment.id),
     p_payload: body,
   });
 
-  if (mappedStatus === "approved" && before.status !== "approved") {
+  if (applyError) {
+    return NextResponse.json({ error: "Falha ao aplicar status" }, { status: 500 });
+  }
+
+  const { data: after } = await admin
+    .from("payments")
+    .select("status")
+    .eq("id", localPaymentId)
+    .single();
+
+  if (after?.status === "approved" && before.status !== "approved") {
     await notifySaleCompleted(String(localPaymentId));
   }
 
-  if (mappedStatus === "refunded" && before.status !== "refunded") {
+  if (after?.status === "refunded" && before.status !== "refunded") {
     const { data: ticket } = await admin
       .from("tickets")
       .select("id")

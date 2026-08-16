@@ -63,6 +63,7 @@ export default async function Home() {
   }
 
   const featured = events.length ? events : showcaseEvents;
+  const usingShowcase = events.length === 0;
   const hero = featured[0];
   const heroPrice = hero
     ? Math.min(...hero.ticket_batches.map((batch) => batch.price_cents), Number.POSITIVE_INFINITY)
@@ -79,6 +80,11 @@ export default async function Home() {
 
   return (
     <main className="ticket-grid overflow-x-clip">
+      {usingShowcase ? (
+        <div className="relative z-10 border-b border-amber-400/25 bg-amber-400/10 px-4 py-2 text-center text-xs font-semibold text-amber-100">
+          Exibindo eventos de demonstração — publique eventos reais no painel do parceiro para substituir esta vitrine.
+        </div>
+      ) : null}
       <section className="relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"

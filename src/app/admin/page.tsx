@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { OpsSetupList } from "@/components/ops-setup-list";
 import { StatCard } from "@/components/stat-card";
 import { formatCurrency } from "@/lib/format";
 import { hasSupabaseConfig } from "@/lib/env";
@@ -13,25 +14,76 @@ export default async function AdminOverviewPage() {
   }
 
   const admin = createAdminClient();
-  const [{ data: payments }, { data: organizers }, { data: events }, { count: ticketCount }, { count: usedCount }] =
-    await Promise.all([
-      admin.from("payments").select("amount_cents,platform_fee_cents,net_amount_cents,status"),
-      admin.from("organizers").select("id,status"),
-      admin.from("events").select("id,status"),
-      admin.from("tickets").select("id", { count: "exact", head: true }).in("status", ["paid", "used"]),
-      admin.from("tickets").select("id", { count: "exact", head: true }).eq("status", "used"),
-    ]);
+  const [
+    { data: payments },
+    { data: organizers },
+    { data: events },
+    { count: ticketCount },
+    { count: usedCount },
+    { count: checkinStaff },
+  ] = await Promise.all([
+    admin.from("payments").select("amount_cents,platform_fee_cents,net_amount_cents,status"),
+    admin.from("organizers").select("id,status,mp_connection_status,asaas_connection_status,asaas_wallet_id"),
+    admin.from("events").select("id,status"),
+    admin.from("tickets").select("id", { count: "exact", head: true }).in("status", ["paid", "used"]),
+    admin.from("tickets").select("id", { count: "exact", head: true }).eq("status", "used"),
+    admin.from("users").select("id", { count: "exact", head: true }).eq("role", "checkin"),
+  ]);
 
   const approved = payments?.filter((p) => p.status === "approved") ?? [];
-  const refunded = payments?.filter((p) => p.status === "refunded") ?? [];
   const gmv = approved.reduce((sum, p) => sum + p.amount_cents, 0);
   const fee = approved.reduce((sum, p) => sum + p.platform_fee_cents, 0);
   const net = approved.reduce((sum, p) => sum + p.net_amount_cents, 0);
   const pendingPartners = organizers?.filter((o) => o.status === "pending").length ?? 0;
   const liveEvents = events?.filter((e) => e.status === "published").length ?? 0;
+  const approvedPartners = organizers?.filter((o) => o.status === "approved") ?? [];
+  const partnersWithPayout = approvedPartners.filter(
+    (o) =>
+      o.mp_connection_status === "connected" ||
+      (o.asaas_connection_status === "connected" && Boolean(o.asaas_wallet_id)),
+  ).length;
+  const pendingPayments = payments?.filter((p) => p.status === "pending").length ?? 0;
 
   return (
     <div className="grid gap-8">
+      <OpsSetupList
+        title="Checklist TicketFly Ops"
+        description="O que a operação precisa fechar para a casa vender e validar na porta."
+        items={[
+          {
+            label: "Contratos pendentes zerados",
+            done: pendingPartners === 0,
+            href: "/admin/contratos",
+            hint:
+              pendingPartners === 0
+                ? "Nenhum parceiro aguardando aprovação"
+                : `${pendingPartners} casa(s) travada(s) sem painel`,
+          },
+          {
+            label: "Parceiro aprovado com provedor conectado",
+            done: partnersWithPayout > 0,
+            href: "/admin/contratos",
+            hint: `${partnersWithPayout}/${approvedPartners.length} aprovados com Asaas ou MP`,
+          },
+          {
+            label: "Evento publicado na vitrine",
+            done: liveEvents > 0,
+            href: "/admin/eventos",
+          },
+          {
+            label: "Operador de porta (opcional)",
+            done: (checkinStaff ?? 0) > 0 || liveEvents > 0,
+            href: "/admin/equipe",
+            hint: "Organizadores já fazem check-in. Use Equipe só para staff da casa.",
+          },
+          {
+            label: "Pagamentos pending sob controle",
+            done: pendingPayments < 20,
+            href: "/admin/pagamentos",
+            hint: `${pendingPayments} pagamento(s) ainda pending — webhook/QR`,
+          },
+        ]}
+      />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="GMV (aprovado)" value={formatCurrency(gmv)} tone="pink" />
         <StatCard label="Taxa de serviço" value={formatCurrency(fee)} />
@@ -54,10 +106,10 @@ export default async function AdminOverviewPage() {
           cta="Ver eventos"
         />
         <QuickCard
-          title="Reembolsos"
-          body={`${refunded.length} pagamento(s) reembolsado(s)`}
-          href="/admin/pagamentos"
-          cta="Abrir pagamentos"
+          title="Equipe de porta"
+          body={`${checkinStaff ?? 0} operador(es) com papel check-in`}
+          href="/admin/equipe"
+          cta="Gerenciar equipe"
         />
       </div>
     </div>

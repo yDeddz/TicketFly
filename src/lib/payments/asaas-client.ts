@@ -1,9 +1,11 @@
-import { env } from "@/lib/env";
+import { assertAsaasProductionConfig, env, isProductionRuntime } from "@/lib/env";
 
 export type AsaasCustomer = {
   id: string;
   name?: string;
   email?: string;
+  mobilePhone?: string;
+  cpfCnpj?: string;
 };
 
 export type AsaasPayment = {
@@ -17,6 +19,13 @@ export type AsaasPayment = {
   billingType?: string;
   paymentDate?: string | null;
   deleted?: boolean;
+};
+
+export type AsaasPixQrCode = {
+  encodedImage: string;
+  payload: string;
+  expirationDate: string;
+  description?: string;
 };
 
 export type AsaasSubaccount = {
@@ -33,6 +42,9 @@ export type AsaasWebhookPayload = {
 };
 
 function asaasBaseUrl() {
+  if (isProductionRuntime()) {
+    assertAsaasProductionConfig();
+  }
   return (process.env.ASAAS_API_URL ?? "https://api-sandbox.asaas.com").replace(/\/$/, "");
 }
 
@@ -44,16 +56,28 @@ export function asaasApiKey() {
   return env("ASAAS_API_KEY");
 }
 
+export class AsaasRequestError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "AsaasRequestError";
+  }
+}
+
 async function asaasFetch<T>(
   path: string,
   init?: RequestInit & { apiKey?: string },
 ): Promise<T> {
+  assertAsaasProductionConfig();
   const apiKey = init?.apiKey ?? asaasApiKey();
   const { apiKey: _omit, ...rest } = init ?? {};
   void _omit;
 
   const response = await fetch(`${asaasBaseUrl()}${path}`, {
     ...rest,
+    signal: rest.signal ?? AbortSignal.timeout(12_000),
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -63,8 +87,11 @@ async function asaasFetch<T>(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Asaas ${rest.method ?? "GET"} ${path} failed (${response.status}): ${text}`);
+    const payload = (await response.json().catch(() => null)) as
+      | { errors?: Array<{ code?: string; description?: string }> }
+      | null;
+    const description = payload?.errors?.[0]?.description ?? "Falha no provedor de pagamento";
+    throw new AsaasRequestError(response.status, description);
   }
 
   if (response.status === 204) {
@@ -78,21 +105,39 @@ export async function asaasFindOrCreateCustomer(args: {
   name: string;
   email: string;
   cpfCnpj?: string;
+  mobilePhone?: string;
 }): Promise<AsaasCustomer> {
   const email = args.email.trim().toLowerCase();
+  const cpfCnpj = args.cpfCnpj?.replace(/\D/g, "");
+  const query = cpfCnpj
+    ? `cpfCnpj=${encodeURIComponent(cpfCnpj)}`
+    : `email=${encodeURIComponent(email)}`;
   const list = await asaasFetch<{ data?: AsaasCustomer[] }>(
-    `/v3/customers?email=${encodeURIComponent(email)}&limit=1`,
+    `/v3/customers?${query}&limit=1`,
   );
 
   const existing = list.data?.[0];
-  if (existing?.id) return existing;
+  if (existing?.id) {
+    return asaasFetch<AsaasCustomer>(`/v3/customers/${encodeURIComponent(existing.id)}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        name: args.name || "Comprador",
+        email,
+        ...(cpfCnpj ? { cpfCnpj } : {}),
+        ...(args.mobilePhone ? { mobilePhone: args.mobilePhone } : {}),
+        notificationDisabled: false,
+      }),
+    });
+  }
 
   return asaasFetch<AsaasCustomer>("/v3/customers", {
     method: "POST",
     body: JSON.stringify({
       name: args.name || "Comprador",
       email,
-      ...(args.cpfCnpj ? { cpfCnpj: args.cpfCnpj } : {}),
+      ...(cpfCnpj ? { cpfCnpj } : {}),
+      ...(args.mobilePhone ? { mobilePhone: args.mobilePhone } : {}),
+      notificationDisabled: false,
     }),
   });
 }
@@ -106,6 +151,19 @@ export async function asaasCreatePayment(body: Record<string, unknown>): Promise
 
 export async function asaasGetPayment(paymentId: string): Promise<AsaasPayment> {
   return asaasFetch<AsaasPayment>(`/v3/payments/${encodeURIComponent(paymentId)}`);
+}
+
+export async function asaasFindPaymentByExternalReference(reference: string) {
+  const response = await asaasFetch<{ data?: AsaasPayment[] }>(
+    `/v3/payments?externalReference=${encodeURIComponent(reference)}&limit=1`,
+  );
+  return response.data?.[0] ?? null;
+}
+
+export async function asaasGetPixQrCode(paymentId: string): Promise<AsaasPixQrCode> {
+  return asaasFetch<AsaasPixQrCode>(
+    `/v3/payments/${encodeURIComponent(paymentId)}/pixQrCode`,
+  );
 }
 
 export async function asaasRefundPayment(paymentId: string): Promise<unknown> {

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, BadgeCheck, Loader2, LockKeyhole, QrCode, ShieldCheck, ShieldPlus, Ticket } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   computePurchaseInsurance,
@@ -10,6 +10,8 @@ import {
   type FeeContract,
 } from "@/lib/fees";
 import { formatCurrency } from "@/lib/format";
+import type { PaymentProviderName } from "@/lib/payments/types";
+import { checkoutSchema } from "@/lib/validators";
 import type { TicketBatch } from "@/types/domain";
 
 const INSURANCE_COVERAGES = [
@@ -26,16 +28,26 @@ export function CheckoutForm({
   demoMode = false,
   feeContract = DEFAULT_FEE_CONTRACT,
   initialPromoterCode = "",
+  initialCouponCode = "",
+  initialBuyerName = "",
+  initialBuyerEmail = "",
+  paymentProvider = "mercado_pago",
 }: {
   batches: TicketBatch[];
   demoMode?: boolean;
   feeContract?: FeeContract;
   initialPromoterCode?: string;
+  initialCouponCode?: string;
+  initialBuyerName?: string;
+  initialBuyerEmail?: string;
+  paymentProvider?: PaymentProviderName;
 }) {
   const [batchId, setBatchId] = useState(batches[0]?.id ?? "");
-  const [insuranceSelected, setInsuranceSelected] = useState(true);
+  const [buyerName, setBuyerName] = useState(initialBuyerName);
+  const [buyerEmail, setBuyerEmail] = useState(initialBuyerEmail);
+  const [insuranceSelected, setInsuranceSelected] = useState(false);
   const [showCoverages, setShowCoverages] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
+  const [couponCode, setCouponCode] = useState(initialCouponCode.toUpperCase());
   const [appliedCoupon, setAppliedCoupon] = useState<{
     code: string;
     discountCents: number;
@@ -45,6 +57,8 @@ export function CheckoutForm({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
+  const autoCouponRef = useRef(false);
+  const providerHint = paymentProvider === "asaas" ? "Pix ou cartão" : "checkout seguro";
 
   const selectedBatch = batches.find((batch) => batch.id === batchId);
   const discountCents = appliedCoupon?.discountCents ?? 0;
@@ -72,20 +86,34 @@ export function CheckoutForm({
       return;
     }
     setCouponLoading(true);
-    const response = await fetch(
-      `/api/checkout/coupon?batchId=${encodeURIComponent(batchId)}&code=${encodeURIComponent(couponCode.trim())}`,
-    );
-    const payload = await response.json();
-    setCouponLoading(false);
-    if (!response.ok) {
+    try {
+      const response = await fetch(
+        `/api/checkout/coupon?batchId=${encodeURIComponent(batchId)}&code=${encodeURIComponent(couponCode.trim())}`,
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setAppliedCoupon(null);
+        setError(payload?.error ?? "Cupom inválido");
+        return;
+      }
+      setAppliedCoupon({ code: payload.code, discountCents: payload.discountCents });
+      setCouponCode(payload.code);
+      setMessage(`Cupom ${payload.code} aplicado (−${formatCurrency(payload.discountCents)})`);
+    } catch {
       setAppliedCoupon(null);
-      setError(payload.error ?? "Cupom inválido");
-      return;
+      setError("Falha de rede ao validar cupom");
+    } finally {
+      setCouponLoading(false);
     }
-    setAppliedCoupon({ code: payload.code, discountCents: payload.discountCents });
-    setCouponCode(payload.code);
-    setMessage(`Cupom ${payload.code} aplicado (−${formatCurrency(payload.discountCents)})`);
   }
+
+  useEffect(() => {
+    if (autoCouponRef.current || demoMode || !batchId || !couponCode.trim()) return;
+    autoCouponRef.current = true;
+    void applyCoupon();
+    // First paint only: apply ?cupom= when the event page passes it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchId]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,31 +124,49 @@ export function CheckoutForm({
     if (demoMode) {
       window.setTimeout(() => {
         setLoading(false);
-        setMessage("Checkout visual pronto. Conecte o Supabase e Mercado Pago para processar compras reais.");
+        setMessage("Checkout visual pronto. Use a página do evento para compras reais.");
       }, 700);
       return;
     }
 
-    const response = await fetch("/api/checkout", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const parsed = checkoutSchema.safeParse({
         batchId,
+        buyerName,
+        buyerEmail,
         insuranceSelected,
         couponCode: appliedCoupon?.code || couponCode.trim() || undefined,
         promoterCode: promoterCode || undefined,
-      }),
-    });
+      });
+      if (!parsed.success) {
+        setError(parsed.error.issues[0]?.message ?? "Dados do checkout inválidos");
+        return;
+      }
 
-    const payload = await response.json();
-    setLoading(false);
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
 
-    if (!response.ok) {
-      setError(payload.error ?? "Nao foi possivel iniciar a compra");
-      return;
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setError(payload?.error ?? "Não foi possível iniciar a compra");
+        return;
+      }
+
+      if (!payload?.checkoutUrl) {
+        setError("Checkout criado sem URL de pagamento");
+        return;
+      }
+
+      window.location.href = payload.checkoutUrl;
+    } catch {
+      setError("Falha de rede ao iniciar a compra");
+    } finally {
+      setLoading(false);
     }
-
-    window.location.href = payload.checkoutUrl;
   }
 
   return (
@@ -129,7 +175,7 @@ export function CheckoutForm({
         <p className="text-xs font-black uppercase text-[#ff1493]">Checkout seguro</p>
         <h2 className="mt-1 text-2xl font-black">Escolha seu ingresso</h2>
         <p className="mt-2 text-sm text-white/56">
-          Selecione o tipo, proteja a compra e continue no Mercado Pago.
+          Informe seus dados, escolha o lote e pague com {providerHint}.
         </p>
       </div>
 
@@ -178,6 +224,32 @@ export function CheckoutForm({
         )}
       </div>
 
+      <div className="grid gap-3">
+        <label className="grid gap-1.5 text-sm">
+          <span className="font-medium">Nome completo</span>
+          <input
+            required
+            autoComplete="name"
+            value={buyerName}
+            onChange={(e) => setBuyerName(e.target.value)}
+            placeholder="Como deve aparecer no ingresso"
+            className="rounded-xl border border-white/15 bg-black/30 px-4 py-3 text-white outline-none focus:border-[#ff1493]/50"
+          />
+        </label>
+        <label className="grid gap-1.5 text-sm">
+          <span className="font-medium">E-mail</span>
+          <input
+            required
+            type="email"
+            autoComplete="email"
+            value={buyerEmail}
+            onChange={(e) => setBuyerEmail(e.target.value)}
+            placeholder="Para acessar o ingresso"
+            className="rounded-xl border border-white/15 bg-black/30 px-4 py-3 text-white outline-none focus:border-[#ff1493]/50"
+          />
+        </label>
+      </div>
+
       <div className="grid gap-2">
         <p className="text-sm font-medium">Cupom de desconto</p>
         <div className="flex gap-2">
@@ -206,7 +278,7 @@ export function CheckoutForm({
           <div>
             <h3 className="text-lg font-black">Proteja-se de imprevistos!</h3>
             <p className="mt-1 text-sm text-white/50">
-              Seguro de compra opcional — reembolso em casos cobertos.
+              Opcional. Reembolso em imprevistos cobertos, conforme regras do evento — não é apólice de seguradora.
             </p>
           </div>
 
@@ -304,7 +376,7 @@ export function CheckoutForm({
       ) : null}
 
       <button
-        disabled={!batchId || loading}
+        disabled={!batchId || loading || !buyerName.trim() || !buyerEmail.trim()}
         className="neon-button flex min-h-[3.25rem] items-center justify-center gap-2 rounded-full px-4 py-4 font-black disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
@@ -314,19 +386,19 @@ export function CheckoutForm({
       <div className="grid gap-2 text-xs text-white/50">
         <span className="flex items-center gap-2">
           <LockKeyhole className="h-4 w-4 text-[#ff1493]" />
-          Dados e pagamento no checkout seguro do Mercado Pago.
+          Pagamento processado de forma segura ({providerHint}).
         </span>
         <span className="flex items-center gap-2">
           <QrCode className="h-4 w-4 text-[#ff1493]" />
-          QR Code liberado apos aprovacao.
+          QR Code liberado após a aprovação.
         </span>
         <span className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-[#ff1493]" />
-          Ingresso unico com bloqueio de duplicidade.
+          Ingresso único com bloqueio de duplicidade.
         </span>
         <span className="flex items-center gap-2">
           <BadgeCheck className="h-4 w-4 text-[#ff1493]" />
-          Compra confirmada por e-mail.
+          Guarde a tela de status e o e-mail da compra para abrir o ingresso.
         </span>
       </div>
     </form>

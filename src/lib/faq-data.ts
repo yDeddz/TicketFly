@@ -18,7 +18,7 @@ export const faqData: FAQData = {
     {
       question: "Como comprar ingressos online pela TicketFly?",
       answer:
-        "Acesse a página do evento, escolha o lote desejado, opcionalmente adicione a Proteção de Compra e um cupom, e finalize no checkout seguro do Mercado Pago. Após a confirmação do pagamento, seu ingresso digital fica disponível no painel e no link enviado por e-mail.",
+        "Acesse a página do evento, informe nome e e-mail, escolha o lote, opcionalmente adicione a Proteção de Compra e um cupom, e finalize no checkout seguro (Pix ou cartão). Depois da aprovação, o ingresso digital fica em Meus Ingressos (/painel) e no link da tela de status.",
     },
     {
       question: "Como encontrar meus ingressos após a compra?",
@@ -33,7 +33,7 @@ export const faqData: FAQData = {
     {
       question: "É seguro comprar ingressos na TicketFly?",
       answer:
-        "Sim. O pagamento é processado pelo Mercado Pago, os ingressos são digitais com QR Code único e a plataforma registra cada compra com status de pagamento e validação na entrada.",
+        "Sim. O pagamento é processado por um checkout seguro (Pix ou cartão), os ingressos são digitais com QR Code único e a plataforma registra cada compra com status de pagamento e validação na entrada.",
     },
     {
       question: "Posso comprar mais de um ingresso na mesma compra?",
@@ -72,12 +72,12 @@ export const faqData: FAQData = {
     {
       question: "Quais formas de pagamento a TicketFly aceita?",
       answer:
-        "Aceitamos as formas disponibilizadas no checkout do Mercado Pago, como Pix, cartão de crédito e outras opções exibidas no momento do pagamento, conforme disponibilidade da sua região.",
+        "Aceitamos Pix, cartão de crédito e as demais formas exibidas no checkout no momento do pagamento, conforme o provedor conectado ao evento (Asaas ou Mercado Pago).",
     },
     {
       question: "O pagamento foi aprovado, mas não recebi meu ingresso. O que fazer?",
       answer:
-        "Aguarde alguns minutos e atualize Meus Ingressos. Se o Mercado Pago já confirmou e o ingresso ainda não aparece, confira o e-mail da compra, o spam e o status em /status da compra. Persistindo o problema, fale com o suporte informando o e-mail e o comprovante.",
+        "Aguarde alguns minutos e atualize Meus Ingressos. Se o pagamento já foi confirmado e o ingresso ainda não aparece, confira o e-mail da compra, o spam e a página /status da compra. Persistindo o problema, fale com o suporte informando o e-mail e o comprovante.",
     },
     {
       question: "Como solicitar o reembolso de um ingresso?",
@@ -87,7 +87,7 @@ export const faqData: FAQData = {
     {
       question: "Quanto tempo leva para o pagamento ser confirmado?",
       answer:
-        "Pix costuma confirmar em segundos ou poucos minutos. Cartão pode levar um pouco mais, conforme a análise do Mercado Pago. Assim que o pagamento for aprovado, o ingresso é liberado automaticamente.",
+        "Pix costuma confirmar em segundos ou poucos minutos. Cartão pode levar um pouco mais, conforme a análise do provedor. Assim que o pagamento for aprovado, o ingresso é liberado automaticamente.",
     },
     {
       question: "Posso cancelar minha compra?",
@@ -119,7 +119,7 @@ export const faqData: FAQData = {
     {
       question: "A TicketFly protege meus dados pessoais?",
       answer:
-        "Sim. Usamos autenticação segura, dados de pagamento ficam com o Mercado Pago e as informações da conta e dos ingressos são tratadas para operar a compra, o acesso ao evento e o suporte.",
+        "Sim. Usamos autenticação segura; dados de cartão ficam com o provedor de pagamento. As informações da conta e dos ingressos são usadas para operar a compra, o acesso ao evento e o suporte.",
     },
   ],
   "criar-eventos": [
@@ -153,7 +153,7 @@ export const faqData: FAQData = {
     {
       question: "Como vender ingressos online pela TicketFly?",
       answer:
-        "Com o evento publicado, compartilhe a página pública. Os compradores pagam no Mercado Pago e recebem o ingresso digital. Você acompanha vendas, cupons e check-in no painel do organizador.",
+        "Com o evento publicado, compartilhe a página pública. Os compradores pagam no checkout seguro (Pix ou cartão) e recebem o ingresso digital. Você acompanha vendas, cupons e check-in no painel do organizador.",
     },
     {
       question: "Posso criar diferentes lotes de ingressos?",
@@ -163,7 +163,7 @@ export const faqData: FAQData = {
     {
       question: "É possível criar cupons de desconto?",
       answer:
-        "Sim. No painel do organizador você cria cupons com regras de desconto. O comprador aplica o código no checkout antes de ir ao Mercado Pago.",
+        "Sim. No painel do organizador você cria cupons com regras de desconto. O comprador aplica o código no checkout antes de pagar.",
     },
     {
       question: "Como acompanhar as vendas em tempo real?",
@@ -222,12 +222,12 @@ export const faqData: FAQData = {
     {
       question: "Como visualizar relatórios de vendas?",
       answer:
-        "No painel do organizador há visão de vendas, ingressos e pagamentos. Também é possível exportar dados e acompanhar o financeiro vinculado ao Mercado Pago conectado.",
+        "No painel do organizador há visão de vendas, ingressos e pagamentos. Também é possível exportar dados e acompanhar o financeiro do provedor conectado (Asaas ou Mercado Pago).",
     },
     {
       question: "Quando recebo o repasse das vendas?",
       answer:
-        "O valor líquido do ingresso segue para a conta Mercado Pago do organizador conforme a liquidação do provedor. A taxa de serviço é tratada à parte, de acordo com o contrato de parceria.",
+        "O valor líquido do ingresso segue para a conta do organizador no provedor conectado (Asaas ou Mercado Pago), conforme a liquidação. A taxa de serviço é tratada à parte, de acordo com o contrato de parceria.",
     },
   ],
   alteracoes: [
@@ -239,7 +239,7 @@ export const faqData: FAQData = {
     {
       question: "Como alterar os dados do participante?",
       answer:
-        "Dados coletados no Mercado Pago e no ingresso ficam vinculados à compra. Para correções (nome ou e-mail), entre em contato com o suporte com o comprovante da compra.",
+        "Nome e e-mail coletados no checkout ficam vinculados à compra. Para correções, entre em contato com o suporte com o comprovante da compra.",
     },
     {
       question: "O organizador pode alterar a data do evento?",
@@ -266,7 +266,7 @@ export const faqData: FAQData = {
     {
       question: "Esqueci minha senha. Como recuperar?",
       answer:
-        "Na tela de login, solicite a redefinição de senha. Você receberá um e-mail com o link para criar uma nova senha em /redefinir-senha.",
+        "Na tela de login, solicite a redefinição de senha. Você receberá um e-mail com um código de 8 dígitos para criar uma nova senha em /redefinir-senha.",
     },
     {
       question: "Como alterar meu e-mail cadastrado?",
@@ -276,7 +276,7 @@ export const faqData: FAQData = {
     {
       question: "Como entrar em contato com o suporte?",
       answer:
-        "Use os canais oficiais da TicketFly (redes e contato indicados no site) e informe e-mail da compra, código do ingresso ou comprovante do Mercado Pago para agilizar o atendimento.",
+        "Use os canais oficiais da TicketFly (redes e contato indicados no site) e informe e-mail da compra, código do ingresso ou comprovante de pagamento para agilizar o atendimento.",
     },
     {
       question: "Como excluir minha conta da TicketFly?",

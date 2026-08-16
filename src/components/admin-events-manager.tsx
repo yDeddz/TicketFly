@@ -4,6 +4,9 @@ import { CalendarClock, Loader2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { getErrorMessage } from "@/lib/client-errors";
+
 type AdminEvent = {
   id: string;
   title: string;
@@ -39,6 +42,8 @@ const statusLabels: Record<AdminEvent["status"], string> = {
   finished: "Finalizado",
 };
 
+const DESTRUCTIVE_STATUSES = new Set<AdminEvent["status"]>(["cancelled", "finished"]);
+
 export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
   const router = useRouter();
   const [forms, setForms] = useState<Record<string, FormState>>(() =>
@@ -46,6 +51,7 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
   );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [pendingSaveId, setPendingSaveId] = useState<string | null>(null);
 
   function updateField(id: string, field: keyof FormState, value: string) {
     setForms((current) => ({
@@ -57,31 +63,47 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
     }));
   }
 
+  function requestSave(eventId: string) {
+    const form = forms[eventId];
+    const original = events.find((event) => event.id === eventId);
+    if (form && original && form.status !== original.status && DESTRUCTIVE_STATUSES.has(form.status)) {
+      setPendingSaveId(eventId);
+      return;
+    }
+    void saveEvent(eventId);
+  }
+
   async function saveEvent(eventId: string) {
     const form = forms[eventId];
+    setPendingSaveId(null);
     setSavingId(eventId);
     setMessage("");
 
-    const response = await fetch(`/api/admin/events/${eventId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        startsAt: new Date(form.startsAt).toISOString(),
-        endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : "",
-      }),
-    });
+    try {
+      const response = await fetch(`/api/admin/events/${eventId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          startsAt: new Date(form.startsAt).toISOString(),
+          endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : "",
+        }),
+      });
 
-    const body = await response.json().catch(() => null);
-    setSavingId(null);
+      const body = await response.json().catch(() => null);
 
-    if (!response.ok) {
-      setMessage(body?.error ?? "Nao foi possivel salvar o evento.");
-      return;
+      if (!response.ok) {
+        setMessage(getErrorMessage(body, "Não foi possível salvar o evento."));
+        return;
+      }
+
+      setMessage("Evento atualizado com sucesso.");
+      router.refresh();
+    } catch {
+      setMessage("Falha de rede ao salvar o evento.");
+    } finally {
+      setSavingId(null);
     }
-
-    setMessage("Evento atualizado com sucesso.");
-    router.refresh();
   }
 
   if (!events.length) {
@@ -92,6 +114,8 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
       </section>
     );
   }
+
+  const pendingForm = pendingSaveId ? forms[pendingSaveId] : null;
 
   return (
     <section className="rounded-lg border border-[#ff1493]/30 bg-[#120410] shadow-sm shadow-[#ff1493]/10">
@@ -117,7 +141,7 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
               className="grid gap-4 p-5"
               onSubmit={(submitEvent) => {
                 submitEvent.preventDefault();
-                saveEvent(event.id);
+                requestSave(event.id);
               }}
             >
               <div className="grid gap-4 lg:grid-cols-[1fr_180px_180px]">
@@ -132,7 +156,7 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium">
-                  Inicio
+                  Início
                   <input
                     required
                     type="datetime-local"
@@ -143,7 +167,7 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium">
-                  Termino
+                  Término
                   <input
                     type="datetime-local"
                     value={form.endsAt}
@@ -165,7 +189,7 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
                 </label>
 
                 <label className="grid gap-2 text-sm font-medium">
-                  Endereco
+                  Endereço
                   <input
                     required
                     value={form.address}
@@ -214,7 +238,7 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
               </div>
 
               <label className="grid gap-2 text-sm font-medium">
-                Descricao
+                Descrição
                 <textarea
                   value={form.description}
                   onChange={(changeEvent) => updateField(event.id, "description", changeEvent.target.value)}
@@ -223,20 +247,37 @@ export function AdminEventsManager({ events }: { events: AdminEvent[] }) {
               </label>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[#c9aabc]">{organizer?.trade_name ?? "Organizador nao informado"}</p>
+                <p className="text-sm text-[#c9aabc]">{organizer?.trade_name ?? "Organizador não informado"}</p>
                 <button
                   type="submit"
                   disabled={savingId === event.id}
                   className="neon-button inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {savingId === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Salvar alteracoes
+                  Salvar alterações
                 </button>
               </div>
             </form>
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingSaveId)}
+        title="Alterar status do evento?"
+        description={
+          pendingForm
+            ? `O status será alterado para “${statusLabels[pendingForm.status]}”. Isso pode afetar vendas e a vitrine.`
+            : undefined
+        }
+        confirmLabel="Salvar mesmo assim"
+        tone="danger"
+        busy={Boolean(savingId)}
+        onCancel={() => setPendingSaveId(null)}
+        onConfirm={() => {
+          if (pendingSaveId) void saveEvent(pendingSaveId);
+        }}
+      />
     </section>
   );
 }

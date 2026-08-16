@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { apiError, createRequestId } from "@/lib/api-error";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fingerprintsMatch, resolveScanPayload } from "@/lib/ticket-crypto";
@@ -26,10 +27,15 @@ const TICKET_SELECT =
   "id,event_id,qr_token,qr_version,buyer_name,events(id,title,organizer_id)";
 
 export async function POST(request: Request) {
-  const input = checkinSchema.safeParse(await request.json());
+  const requestId = createRequestId(request);
+  const input = checkinSchema.safeParse(await request.json().catch(() => null));
 
   if (!input.success) {
-    return NextResponse.json({ error: "QR Code ou evento inválido" }, { status: 400 });
+    return apiError(400, {
+      message: "QR Code ou evento inválido",
+      code: "VALIDATION_ERROR",
+      requestId,
+    });
   }
 
   const supabase = await createSupabaseServerClient();
@@ -38,13 +44,13 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Login obrigatório" }, { status: 401 });
+    return apiError(401, { message: "Login obrigatório", code: "UNAUTHORIZED", requestId });
   }
 
   const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
 
   if (!profile || !["admin", "checkin", "organizer"].includes(profile.role)) {
-    return NextResponse.json({ error: "Sem permissão para check-in" }, { status: 403 });
+    return apiError(403, { message: "Sem permissão para check-in", code: "FORBIDDEN", requestId });
   }
 
   const selectedEventId = input.data.eventId;
@@ -57,7 +63,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!selectedEvent) {
-    return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+    return apiError(404, { message: "Evento não encontrado", code: "EVENT_NOT_FOUND", requestId });
   }
 
   if (profile.role === "organizer") {
@@ -69,7 +75,11 @@ export async function POST(request: Request) {
 
     // Fail closed: missing organizer row or wrong owner → deny.
     if (!organizer?.id || organizer.id !== selectedEvent.organizer_id) {
-      return NextResponse.json({ error: "Sem permissão para este evento" }, { status: 403 });
+      return apiError(403, {
+        message: "Sem permissão para este evento",
+        code: "FORBIDDEN",
+        requestId,
+      });
     }
   }
 
@@ -79,12 +89,16 @@ export async function POST(request: Request) {
     const message =
       resolved.reason === "expired"
         ? "QR expirado — peça para atualizar a tela do ingresso"
-        : resolved.reason === "invalid" &&
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-              input.data.qrToken.trim(),
-            )
-          ? "Use o código curto da porta (ex.: AB12-CD34), não a referência pública"
-          : "QR / código inválido ou não reconhecido";
+        : resolved.reason === "malformed"
+          ? "Código incompleto ou malformado"
+          : resolved.reason === "invalid" &&
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                input.data.qrToken.trim(),
+              )
+            ? "Use o código curto da porta (ex.: AB12-CD34), não a referência pública"
+            : /^[0-9a-f]{64}$/i.test(input.data.qrToken.trim())
+              ? "QR legado não aceito — peça o QR ao vivo ou o código curto da porta"
+              : "QR / código inválido ou não reconhecido";
 
     return NextResponse.json(
       {
@@ -93,8 +107,9 @@ export async function POST(request: Request) {
         ticket_id: null,
         event_id: null,
         reason: resolved.reason,
+        requestId,
       },
-      { status: 200 },
+      { status: 200, headers: { "x-request-id": requestId } },
     );
   }
 
@@ -115,6 +130,7 @@ export async function POST(request: Request) {
         ticket_id: null,
         event_id: null,
         reason: "invalid",
+        requestId,
       });
     }
 
@@ -129,6 +145,7 @@ export async function POST(request: Request) {
         ticket_id: data.id,
         event_id: data.event_id,
         reason: "expired",
+        requestId,
       });
     }
 
@@ -147,6 +164,8 @@ export async function POST(request: Request) {
         message: "Ingresso não encontrado",
         ticket_id: null,
         event_id: null,
+        reason: "invalid",
+        requestId,
       });
     }
 
@@ -165,6 +184,8 @@ export async function POST(request: Request) {
         message: "Ingresso não encontrado",
         ticket_id: null,
         event_id: null,
+        reason: "invalid",
+        requestId,
       });
     }
 
@@ -174,6 +195,8 @@ export async function POST(request: Request) {
         message: "QR invalidado — ingresso foi rotacionado ou cancelado",
         ticket_id: data.id,
         event_id: data.event_id,
+        reason: "rotated",
+        requestId,
       });
     }
 
@@ -183,6 +206,8 @@ export async function POST(request: Request) {
         message: "QR desatualizado — peça para atualizar a tela do ingresso",
         ticket_id: data.id,
         event_id: data.event_id,
+        reason: "stale_version",
+        requestId,
       });
     }
 
@@ -197,6 +222,7 @@ export async function POST(request: Request) {
       ticket_id: ticketMeta?.id ?? null,
       event_id: ticketMeta?.event_id ?? null,
       reason: "wrong_event",
+      requestId,
     });
   }
 
@@ -210,7 +236,11 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (!organizer?.id || !event?.organizer_id || event.organizer_id !== organizer.id) {
-      return NextResponse.json({ error: "Sem permissão para este evento" }, { status: 403 });
+      return apiError(403, {
+        message: "Sem permissão para este evento",
+        code: "FORBIDDEN",
+        requestId,
+      });
     }
   }
 
@@ -223,15 +253,25 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: "Erro ao validar ingresso" }, { status: 500 });
+    return apiError(500, {
+      message: "Erro ao validar ingresso",
+      code: "CHECKIN_FAILED",
+      requestId,
+      cause: error,
+      path: "/api/checkin/validate",
+    });
   }
 
   const event = unwrapEvent(ticketMeta.events);
 
-  return NextResponse.json({
-    ...data,
-    buyer_name: ticketMeta.buyer_name ?? null,
-    event_title: event?.title ?? selectedEvent.title ?? null,
-    entry_mode: resolved.mode === "manual" ? "manual" : "scan",
-  });
+  return NextResponse.json(
+    {
+      ...data,
+      buyer_name: ticketMeta.buyer_name ?? null,
+      event_title: event?.title ?? selectedEvent.title ?? null,
+      entry_mode: resolved.mode === "manual" ? "manual" : "scan",
+      requestId,
+    },
+    { headers: { "x-request-id": requestId } },
+  );
 }

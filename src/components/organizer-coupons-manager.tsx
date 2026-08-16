@@ -3,6 +3,7 @@
 import { Loader2, Plus, ToggleLeft, ToggleRight } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatCurrency } from "@/lib/format";
 
 type Coupon = {
@@ -45,6 +46,7 @@ export function OrganizerCouponsManager() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [loaded, setLoaded] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState<Coupon | null>(null);
 
   async function load() {
     const res = await fetch("/api/organizer/coupons");
@@ -103,22 +105,35 @@ export function OrganizerCouponsManager() {
     });
   }
 
+  function requestToggle(coupon: Coupon) {
+    if (coupon.is_active) {
+      setPendingToggle(coupon);
+      return;
+    }
+    toggleActive(coupon);
+  }
+
   function toggleActive(coupon: Coupon) {
+    setPendingToggle(null);
     setMessage(null);
     setError(null);
     startTransition(async () => {
-      const res = await fetch(`/api/organizer/coupons/${coupon.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !coupon.is_active }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Erro ao atualizar");
-        return;
+      try {
+        const res = await fetch(`/api/organizer/coupons/${coupon.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: !coupon.is_active }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          setError(data?.error ?? "Erro ao atualizar");
+          return;
+        }
+        setMessage(data.is_active ? "Cupom ativado." : "Cupom desativado.");
+        await load();
+      } catch {
+        setError("Falha de rede ao atualizar cupom");
       }
-      setMessage(data.is_active ? "Cupom ativado." : "Cupom desativado.");
-      await load();
     });
   }
 
@@ -338,7 +353,7 @@ export function OrganizerCouponsManager() {
                     <button
                       type="button"
                       disabled={pending}
-                      onClick={() => toggleActive(coupon)}
+                      onClick={() => requestToggle(coupon)}
                       className="inline-flex items-center gap-1 text-xs font-bold text-white/70 hover:text-white"
                     >
                       {coupon.is_active ? (
@@ -355,6 +370,23 @@ export function OrganizerCouponsManager() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingToggle)}
+        title="Desativar cupom?"
+        description={
+          pendingToggle
+            ? `O cupom ${pendingToggle.code} deixará de ser aceito em novas compras.`
+            : undefined
+        }
+        confirmLabel="Desativar"
+        tone="danger"
+        busy={pending}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={() => {
+          if (pendingToggle) toggleActive(pendingToggle);
+        }}
+      />
     </div>
   );
 }

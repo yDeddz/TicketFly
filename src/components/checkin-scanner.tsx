@@ -182,9 +182,10 @@ export function CheckinScanner({ events }: { events: CheckinEventOption[] }) {
           ? payload
           : {
               result: "not_found",
-              message: payload.error ?? "Falha na validação",
+              message: payload.error ?? payload.message ?? "Falha na validação",
               ticket_id: null,
               event_id: null,
+              reason: response.status >= 500 ? "server" : "invalid",
             };
 
         setResult(next);
@@ -201,9 +202,10 @@ export function CheckinScanner({ events }: { events: CheckinEventOption[] }) {
       } catch {
         setResult({
           result: "not_found",
-          message: "Falha de rede ao validar ingresso",
+          message: "Falha de rede ao validar ingresso — tente de novo",
           ticket_id: null,
           event_id: null,
+          reason: "network",
         });
       } finally {
         setLoading(false);

@@ -1,9 +1,12 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
 
+import { allowLegacyHexQr, requireTicketQrSecret } from "@/lib/env";
+
 const QR_PREFIX = "PP1.";
 const WALLET_PREFIX = "PPW1.";
 const ACCESS_PREFIX = "PPA1.";
+const DOOR_PAYMENT_PREFIX = "PPD1.";
 
 /** Alphabet without 0/O/1/I — easy to dictate at the door. */
 const MANUAL_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -15,6 +18,8 @@ export const QR_SESSION_TTL_SECONDS = 90;
 export const WALLET_PASS_GRACE_SECONDS = 60 * 60 * 36;
 /** Magic-link access to /ingressos/[code]. */
 export const TICKET_ACCESS_TTL_SECONDS = 60 * 60 * 72;
+/** Buyer link for a door payment; enough for PIX/card completion and ticket pickup. */
+export const DOOR_PAYMENT_ACCESS_TTL_SECONDS = 60 * 60 * 48;
 
 type QrClaims = {
   typ: "qr";
@@ -36,17 +41,13 @@ type AccessClaims = {
   email: string;
 };
 
+type DoorPaymentClaims = {
+  typ: "door-payment";
+  pid: string;
+};
+
 function signingKey() {
-  const secret =
-    process.env.TICKET_QR_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "";
-
-  if (!secret || secret.length < 32) {
-    throw new Error("TICKET_QR_SECRET (or SUPABASE_SERVICE_ROLE_KEY) must be at least 32 chars");
-  }
-
-  return new TextEncoder().encode(secret);
+  return new TextEncoder().encode(requireTicketQrSecret());
 }
 
 export function tokenFingerprint(qrToken: string) {
@@ -153,6 +154,47 @@ export async function verifyTicketAccessToken(token: string, expectedCode: strin
   }
 }
 
+export async function signDoorPaymentAccessToken(args: {
+  paymentId: string;
+  ttlSeconds?: number;
+}) {
+  const ttl = args.ttlSeconds ?? DOOR_PAYMENT_ACCESS_TTL_SECONDS;
+  const now = Math.floor(Date.now() / 1000);
+  const jwt = await new SignJWT({
+    typ: "door-payment",
+    pid: args.paymentId,
+  } satisfies DoorPaymentClaims)
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer("pinkpass")
+    .setAudience("door-payment")
+    .setJti(randomUUID())
+    .setIssuedAt(now)
+    .setExpirationTime(now + ttl)
+    .sign(signingKey());
+
+  return `${DOOR_PAYMENT_PREFIX}${jwt}`;
+}
+
+export async function verifyDoorPaymentAccessToken(token: string) {
+  if (!token.startsWith(DOOR_PAYMENT_PREFIX)) return null;
+
+  try {
+    const { payload } = await jwtVerify(
+      token.slice(DOOR_PAYMENT_PREFIX.length),
+      signingKey(),
+      {
+        issuer: "pinkpass",
+        audience: "door-payment",
+      },
+    );
+
+    if (payload.typ !== "door-payment" || typeof payload.pid !== "string") return null;
+    return { paymentId: payload.pid };
+  } catch {
+    return null;
+  }
+}
+
 export type ResolvedScan =
   | {
       ok: true;
@@ -249,7 +291,11 @@ export async function resolveScanPayload(rawInput: string): Promise<ResolvedScan
   }
 
   // Legacy emergency: raw 64-char hex qr_token (never a public UUID).
+  // Disabled in production unless ALLOW_LEGACY_HEX_QR=true.
   if (/^[0-9a-f]{64}$/i.test(raw)) {
+    if (!allowLegacyHexQr()) {
+      return { ok: false, reason: "invalid" };
+    }
     return { ok: true, mode: "legacy", qrToken: raw.toLowerCase() };
   }
 

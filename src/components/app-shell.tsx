@@ -2,10 +2,10 @@ import Link from "next/link";
 import { AtSign, Camera, CirclePlus, Music2, Radio, Send } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
+import { MobileNav } from "@/components/mobile-nav";
 import { TicketsNavButton } from "@/components/tickets-nav-button";
 import { UserMenu } from "@/components/user-menu";
 import { hasSupabaseConfig } from "@/lib/env";
-import { myTickets } from "@/lib/ticketfly-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const HEADER_OFFSET = "4.25rem";
@@ -17,6 +17,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     fullName: string | null;
     role: string | null;
   } | null = null;
+  let ticketCount = 0;
 
   if (hasSupabaseConfig()) {
     try {
@@ -41,17 +42,41 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             (typeof user.user_metadata?.name === "string" ? user.user_metadata.name : null),
           role: profile?.role ?? null,
         };
+
+        const { count } = await supabase
+          .from("tickets")
+          .select("id", { count: "exact", head: true })
+          .or(`buyer_user_id.eq.${user.id},buyer_email.eq.${user.email}`)
+          .in("status", ["paid", "used", "pending"]);
+
+        ticketCount = count ?? 0;
       }
     } catch {
       userSummary = null;
+      ticketCount = 0;
     }
   }
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[#050505] text-[#f8f4f7]">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/8 bg-[#050505]/75 backdrop-blur-2xl">
-        <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-2 px-4 sm:gap-3 sm:px-5 lg:px-6">
-          <BrandLogo className="max-w-[9.5rem] sm:max-w-[11.5rem]" priority variant="horizontal" />
+        <div className="relative mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-2 px-4 sm:gap-3 sm:px-5 lg:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <MobileNav
+              extraLinks={[
+                ...(userSummary?.role === "organizer" || userSummary?.role === "admin"
+                  ? [{ href: "/organizador", label: "Painel organizador" }]
+                  : []),
+                ...(userSummary?.role === "admin" ? [{ href: "/admin", label: "Administração" }] : []),
+                ...(userSummary?.role === "admin" ||
+                userSummary?.role === "organizer" ||
+                userSummary?.role === "checkin"
+                  ? [{ href: "/checkin", label: "Check-in da porta" }]
+                  : []),
+              ]}
+            />
+            <BrandLogo className="max-w-[9.5rem] sm:max-w-[11.5rem]" priority variant="horizontal" />
+          </div>
 
           <nav className="hidden items-center gap-6 text-sm font-medium text-white/65 xl:flex">
             <Link className="transition-colors duration-200 hover:text-white" href="/eventos">
@@ -74,7 +99,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <CirclePlus className="h-4 w-4 text-white/55 transition-colors group-hover:text-[#ff9ed2] sm:h-[1.125rem] sm:w-[1.125rem]" strokeWidth={1.75} />
               <span className="hidden lg:inline">Criar evento</span>
             </Link>
-            <TicketsNavButton count={myTickets.length} />
+            <TicketsNavButton count={ticketCount} />
             <UserMenu user={userSummary} />
             <Link
               className="neon-button btn hidden h-10 shrink-0 cursor-pointer px-4 text-sm lg:inline-flex"

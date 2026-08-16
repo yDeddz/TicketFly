@@ -64,6 +64,10 @@ export function resolveCheckoutProvider(
   };
 }
 
+export function checkoutProviderLabel(provider: PaymentProviderName) {
+  return provider === "asaas" ? "Pix ou cartão" : "checkout seguro";
+}
+
 export async function createProviderCheckout(
   organizer: OrganizerPaymentConnection | null | undefined,
   input: Omit<CreateCheckoutInput, "mpAccessToken" | "useMpConnect" | "asaasWalletId">,

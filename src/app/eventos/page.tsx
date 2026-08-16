@@ -25,6 +25,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   }
 
   const source = events.length ? events : showcaseEvents;
+  const usingShowcase = events.length === 0;
   const filtered =
     categoria === "vip"
       ? source.filter((event) => event.title.toLowerCase().includes("vip") || event.slug.includes("vip"))
@@ -37,6 +38,11 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   return (
     <main className="ticket-grid px-4 pb-16 pt-8 lg:px-6">
       <section className="mx-auto max-w-7xl">
+        {usingShowcase ? (
+          <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+            Dados de demonstração — nenhum evento publicado no banco ainda.
+          </p>
+        ) : null}
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-[#ff1493]/35 bg-[#ff1493]/10 px-4 py-2 text-xs font-black uppercase text-[#ff7ec8]">

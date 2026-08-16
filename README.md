@@ -215,19 +215,36 @@ NEXT_PUBLIC_APP_URL=https://seu-dominio.com
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
 SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
+TICKET_QR_SECRET=sua-chave-secreta-com-pelo-menos-32-caracteres
 MERCADO_PAGO_ACCESS_TOKEN=APP_USR-seu-access-token
 MERCADO_PAGO_WEBHOOK_SECRET=sua-chave-secreta-webhook
+ASAAS_API_KEY=sua-chave-asaas
+ASAAS_API_URL=https://api.asaas.com
+ASAAS_WEBHOOK_TOKEN=seu-token-webhook-asaas
+# Opcional: apenas para executar manualmente /api/cron/expire-reservations
+CRON_SECRET=seu-segredo-cron
 ```
 
 Nunca envie `.env.local`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCADO_PAGO_ACCESS_TOKEN` ou `MERCADO_PAGO_WEBHOOK_SECRET` para o GitHub.
 
+## Runbook
+
+Guia operacional de produção (env, webhooks, QR, porta, cron de reservas): [`docs/RUNBOOK.md`](docs/RUNBOOK.md).
+
+Passo a passo para Leonardo + yDeddz até 31/08: [`docs/PLANO-GO-LIVE.md`](docs/PLANO-GO-LIVE.md).
+
+### Cron de reservas
+
+O Supabase Cron chama `expire_stale_reservations(30)` diretamente no banco a
+cada 10 minutos. A migration
+`20260808111613_schedule_expire_stale_reservations.sql` habilita o `pg_cron`
+e cria o job. A rota HTTP protegida por `CRON_SECRET` fica apenas como fallback
+manual.
+
 ## Melhorias Futuras
 
 - Carrinho com múltiplos ingressos por compra (limiar de taxa sobre o subtotal).
-- Expiração automática de reservas pendentes.
 - Mercado Pago Connect / Checkout Pro Marketplace: cobrir no collector da balada com `marketplace_fee` = taxa Ticket Fly.
-- Cupons, promoters com comissão configurável por evento e relatórios financeiros.
-- Reembolso integrado.
-- PWA installable com manifest e cache offline para check-in.
-- Tipos gerados do Supabase com `supabase gen types typescript`.
 - Worker/cron para reprocessar `webhook_deliveries` pendentes com backoff.
+- Tipos gerados do Supabase com `supabase gen types typescript`.
+- PWA installable com manifest e cache offline para check-in.

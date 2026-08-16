@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { OpsSetupList } from "@/components/ops-setup-list";
 import { StatCard } from "@/components/stat-card";
 import { formatCurrency } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,12 +16,16 @@ export default async function OrganizerDashboardPage() {
   if (!user) return null;
 
   const admin = createAdminClient();
-  const { data: organizer } = await admin.from("organizers").select("id").eq("user_id", user.id).single();
+  const { data: organizer } = await admin
+    .from("organizers")
+    .select("id,mp_connection_status,asaas_connection_status,asaas_wallet_id")
+    .eq("user_id", user.id)
+    .single();
   if (!organizer) return null;
 
   const { data: events } = await admin
     .from("events")
-    .select("id,title,status,starts_at,tickets(status,amount_paid_cents,payment_id),checkins(id)")
+    .select("id,title,status,starts_at,tickets(status,amount_paid_cents,payment_id),checkins(id),ticket_batches(id)")
     .eq("organizer_id", organizer.id)
     .order("starts_at", { ascending: false });
 
@@ -50,9 +55,49 @@ export default async function OrganizerDashboardPage() {
 
   const checkins = events?.reduce((sum, e) => sum + (e.checkins?.length ?? 0), 0) ?? 0;
   const live = events?.filter((e) => e.status === "published").length ?? 0;
+  const hasBatch = (events ?? []).some((event) => (event.ticket_batches?.length ?? 0) > 0);
+  const paymentsReady =
+    organizer.mp_connection_status === "connected" ||
+    (organizer.asaas_connection_status === "connected" && Boolean(organizer.asaas_wallet_id));
 
   return (
     <div className="grid gap-8">
+      <OpsSetupList
+        title="Checklist da casa"
+        description="Feche estes itens antes de abrir a venda ao público."
+        items={[
+          {
+            label: "Conectar Asaas ou Mercado Pago",
+            done: paymentsReady,
+            href: "/organizador/pagamentos",
+            hint: paymentsReady
+              ? "Recebimento configurado"
+              : "Sem isso o dinheiro da venda online não cai na conta da casa",
+          },
+          {
+            label: "Criar evento",
+            done: (events?.length ?? 0) > 0,
+            href: "/organizador/eventos",
+          },
+          {
+            label: "Cadastrar lote de ingresso",
+            done: hasBatch,
+            href: "/organizador/eventos",
+            hint: "Sem lote o evento não publica",
+          },
+          {
+            label: "Publicar na vitrine",
+            done: live > 0,
+            href: "/organizador/eventos",
+          },
+          {
+            label: "Testar check-in",
+            done: checkins > 0,
+            href: "/organizador/entradas",
+            hint: "Compre um ingresso de teste e valide em /checkin",
+          },
+        ]}
+      />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Receita líquida (você)" value={formatCurrency(revenue)} tone="pink" />
         <StatCard label="Vendidos" value={String(paid.length)} />

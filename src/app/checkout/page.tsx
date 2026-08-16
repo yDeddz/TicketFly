@@ -1,9 +1,33 @@
-import { CheckoutForm } from "@/components/checkout-form";
-import { DEFAULT_FEE_CONTRACT } from "@/lib/fees";
-import { showcaseEvents } from "@/lib/ticketfly-data";
-import { formatDateTime } from "@/lib/format";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function CheckoutPage() {
+import { CheckoutForm } from "@/components/checkout-form";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { DEFAULT_FEE_CONTRACT } from "@/lib/fees";
+import { formatDateTime } from "@/lib/format";
+import { showcaseEvents } from "@/lib/ticketfly-data";
+
+export default function CheckoutPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // Real purchases happen on /eventos/[slug]. Keep /checkout only as an explicit demo.
+  return <CheckoutDemoPage searchParams={searchParams} />;
+}
+
+async function CheckoutDemoPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const demo = params.demo === "1" || params.demo === "true";
+
+  if (!demo) {
+    redirect("/eventos");
+  }
+
   const event = showcaseEvents[0];
   const feeContract = {
     fee_threshold_cents: event.organizers?.fee_threshold_cents ?? DEFAULT_FEE_CONTRACT.fee_threshold_cents,
@@ -27,10 +51,19 @@ export default function CheckoutPage() {
             }}
           />
           <div className="grid gap-6 p-6">
+            <AlertBanner tone="warning">
+              Demonstração visual — compras reais começam em{" "}
+              <Link className="underline" href="/eventos">
+                Eventos
+              </Link>
+              .
+            </AlertBanner>
             <div>
-              <p className="text-sm font-black uppercase text-[#ff1493]">Checkout TicketFly</p>
+              <p className="text-sm font-black uppercase text-[#ff1493]">Checkout TicketFly (demo)</p>
               <h1 className="mt-2 text-4xl font-black">{event.title}</h1>
-              <p className="mt-3 text-white/62">{formatDateTime(event.starts_at)} - {event.venue_name}</p>
+              <p className="mt-3 text-white/62">
+                {formatDateTime(event.starts_at)} - {event.venue_name}
+              </p>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               <Trust label="Ambiente" value="Seguro" />

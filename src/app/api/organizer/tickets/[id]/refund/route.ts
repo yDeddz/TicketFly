@@ -44,5 +44,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  return NextResponse.json({ ok: true, mpRefunded: result.mpRefunded });
+  return NextResponse.json({
+    ok: true,
+    mpRefunded: result.mpRefunded,
+    providerRefunded: result.providerRefunded,
+    partial: result.partial,
+    message: result.partial
+      ? "Ingresso cancelado localmente, mas o estorno no provedor falhou — verifique manualmente no painel do pagamento."
+      : result.providerRefunded
+        ? "Reembolso processado (inclui estorno no provedor)."
+        : "Reembolso registrado localmente.",
+  });
 }

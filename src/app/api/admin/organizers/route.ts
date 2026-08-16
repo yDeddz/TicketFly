@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/auth-guards";
+import { appUrl } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createContractSchema } from "@/lib/validators";
 
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
   const { data: existingUser } = await admin.from("users").select("id,role").eq("email", email).maybeSingle();
 
   let userId = existingUser?.id;
+  let invited = false;
 
   if (!userId) {
     const { data: created, error: createError } = await admin.auth.admin.createUser({
@@ -44,6 +46,10 @@ export async function POST(request: Request) {
       full_name: input.data.tradeName,
       role: "organizer",
     });
+    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo: `${appUrl()}/redefinir-senha`,
+    });
+    invited = !resetError;
   } else {
     await admin
       .from("users")
@@ -81,5 +87,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Erro ao criar contrato" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, organizer: data });
+  return NextResponse.json({ ok: true, organizer: data, invited });
 }

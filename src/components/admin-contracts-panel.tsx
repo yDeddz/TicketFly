@@ -4,7 +4,7 @@ import { Loader2, Plus, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, reaisToCents, centsToReaisInput } from "@/lib/format";
 import type { MpConnectionStatus } from "@/types/domain";
 
 type AdminOrganizer = {
@@ -26,7 +26,7 @@ type AdminOrganizer = {
 
 type FormState = {
   status: AdminOrganizer["status"];
-  feeThresholdCents: string;
+  feeThresholdReais: string;
   feePercentUptoThreshold: string;
   feePercentAboveThreshold: string;
   serviceFeePlatformSharePercent: string;
@@ -56,7 +56,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
     phone: "",
     city: "",
     partnershipNotes: "",
-    feeThresholdCents: "12000",
+    feeThresholdReais: "120,00",
     feePercentUptoThreshold: "12",
     feePercentAboveThreshold: "9",
     serviceFeePlatformSharePercent: "50",
@@ -65,6 +65,11 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
 
   async function saveOrganizer(organizerId: string) {
     const form = forms[organizerId];
+    const feeThresholdCents = reaisToCents(form.feeThresholdReais);
+    if (feeThresholdCents === null) {
+      setMessage("Informe o limiar de taxa em reais (ex.: 120,00).");
+      return;
+    }
     setSavingId(organizerId);
     setMessage("");
     const response = await fetch(`/api/admin/organizers/${organizerId}`, {
@@ -72,7 +77,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         status: form.status,
-        feeThresholdCents: Number(form.feeThresholdCents),
+        feeThresholdCents,
         feePercentUptoThreshold: Number(form.feePercentUptoThreshold),
         feePercentAboveThreshold: Number(form.feePercentAboveThreshold),
         serviceFeePlatformSharePercent: Number(form.serviceFeePlatformSharePercent),
@@ -92,6 +97,12 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
     event.preventDefault();
     setCreating(true);
     setMessage("");
+    const feeThresholdCents = reaisToCents(createForm.feeThresholdReais);
+    if (feeThresholdCents === null) {
+      setCreating(false);
+      setMessage("Informe o limiar de taxa em reais (ex.: 120,00).");
+      return;
+    }
     const response = await fetch("/api/admin/organizers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -103,7 +114,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
         phone: createForm.phone,
         city: createForm.city,
         partnershipNotes: createForm.partnershipNotes,
-        feeThresholdCents: Number(createForm.feeThresholdCents),
+        feeThresholdCents,
         feePercentUptoThreshold: Number(createForm.feePercentUptoThreshold),
         feePercentAboveThreshold: Number(createForm.feePercentAboveThreshold),
         serviceFeePlatformSharePercent: Number(createForm.serviceFeePlatformSharePercent),
@@ -117,7 +128,11 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
       return;
     }
     setShowCreate(false);
-    setMessage("Novo contrato criado.");
+    setMessage(
+      body?.invited
+        ? "Contrato criado. O parceiro recebeu e-mail para definir a senha."
+        : "Contrato criado. Peça ao parceiro para usar “Esqueci a senha” em /login se ainda não tiver acesso.",
+    );
     router.refresh();
   }
 
@@ -154,7 +169,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
             <Field label="CNPJ/CPF" value={createForm.document} onChange={(v) => setCreateForm({ ...createForm, document: v })} required />
             <Field label="Telefone" value={createForm.phone} onChange={(v) => setCreateForm({ ...createForm, phone: v })} />
             <Field label="Cidade" value={createForm.city} onChange={(v) => setCreateForm({ ...createForm, city: v })} />
-            <Field label="Limiar (centavos)" value={createForm.feeThresholdCents} onChange={(v) => setCreateForm({ ...createForm, feeThresholdCents: v })} type="number" />
+            <Field label="Limiar da taxa (R$)" value={createForm.feeThresholdReais} onChange={(v) => setCreateForm({ ...createForm, feeThresholdReais: v })} />
             <Field label="Taxa até limiar (%)" value={createForm.feePercentUptoThreshold} onChange={(v) => setCreateForm({ ...createForm, feePercentUptoThreshold: v })} type="number" />
             <Field label="Taxa acima (%)" value={createForm.feePercentAboveThreshold} onChange={(v) => setCreateForm({ ...createForm, feePercentAboveThreshold: v })} type="number" />
             <Field
@@ -194,8 +209,14 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
       ) : null}
 
       <div className="grid gap-4">
+        {organizers.length === 0 && !showCreate ? (
+          <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-white/60">
+            Nenhum contrato ainda. Crie o primeiro parceiro para publicar eventos de teste.
+          </p>
+        ) : null}
         {organizers.map((organizer) => {
           const form = forms[organizer.id];
+          if (!form) return null;
           const saving = savingId === organizer.id;
           return (
             <div key={organizer.id} className="grid gap-4 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5">
@@ -225,14 +246,16 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
                   </select>
                 </label>
                 <label className="grid gap-2 text-sm">
-                  Limiar (centavos)
+                  Limiar da taxa (R$)
                   <input
-                    type="number"
-                    value={form.feeThresholdCents}
-                    onChange={(e) => setForms((c) => ({ ...c, [organizer.id]: { ...c[organizer.id], feeThresholdCents: e.target.value } }))}
+                    inputMode="decimal"
+                    value={form.feeThresholdReais}
+                    onChange={(e) => setForms((c) => ({ ...c, [organizer.id]: { ...c[organizer.id], feeThresholdReais: e.target.value } }))}
                     className="h-11 rounded-md border border-white/10 bg-[#0d0b10] px-3"
                   />
-                  <span className="text-xs text-[#c9aabc]">Até {formatCurrency(Number(form.feeThresholdCents) || 0)}</span>
+                  <span className="text-xs text-[#c9aabc]">
+                    Até {formatCurrency(reaisToCents(form.feeThresholdReais) ?? 0)} cobra a taxa menor
+                  </span>
                 </label>
                 <label className="grid gap-2 text-sm">
                   Taxa até limiar (%)
@@ -322,7 +345,7 @@ function Field({
 function organizerToForm(organizer: AdminOrganizer): FormState {
   return {
     status: organizer.status,
-    feeThresholdCents: String(organizer.fee_threshold_cents),
+    feeThresholdReais: centsToReaisInput(organizer.fee_threshold_cents),
     feePercentUptoThreshold: String(organizer.fee_percent_upto_threshold),
     feePercentAboveThreshold: String(organizer.fee_percent_above_threshold),
     serviceFeePlatformSharePercent: String(organizer.service_fee_platform_share_percent ?? 50),

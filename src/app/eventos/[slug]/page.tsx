@@ -5,6 +5,7 @@ import { CheckoutForm } from "@/components/checkout-form";
 import { formatDateTime } from "@/lib/format";
 import { DEFAULT_FEE_CONTRACT, type FeeContract } from "@/lib/fees";
 import { hasSupabaseConfig } from "@/lib/env";
+import { resolveCheckoutProvider } from "@/lib/payments";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getShowcaseEvent } from "@/lib/ticketfly-data";
 import type { EventWithBatches } from "@/types/domain";
@@ -22,19 +23,29 @@ export default async function EventPage({
   const query = await searchParams;
   let event: EventWithBatches | null = null;
   let demoMode = true;
+  let buyerName = "";
+  let buyerEmail = "";
 
   if (hasSupabaseConfig()) {
     const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
-      .from("events")
-      .select(
-        "*, organizers(trade_name, fee_threshold_cents, fee_percent_upto_threshold, fee_percent_above_threshold, service_fee_platform_share_percent, mp_connection_status), ticket_batches(*)",
-      )
-      .eq("slug", slug)
-      .single();
+    const [{ data }, auth] = await Promise.all([
+      supabase
+        .from("events")
+        .select(
+          "*, organizers(trade_name, fee_threshold_cents, fee_percent_upto_threshold, fee_percent_above_threshold, service_fee_platform_share_percent, mp_connection_status, asaas_connection_status, asaas_wallet_id, primary_payment_provider), ticket_batches(*)",
+        )
+        .eq("slug", slug)
+        .single(),
+      supabase.auth.getUser(),
+    ]);
 
     event = (data ?? null) as EventWithBatches | null;
     demoMode = false;
+    const user = auth.data.user;
+    buyerEmail = user?.email?.trim() ?? "";
+    buyerName =
+      (typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "") ||
+      (typeof user?.user_metadata?.name === "string" ? user.user_metadata.name.trim() : "");
   }
 
   if (!event) {
@@ -60,6 +71,17 @@ export default async function EventPage({
       event.organizers?.service_fee_platform_share_percent ??
       DEFAULT_FEE_CONTRACT.service_fee_platform_share_percent,
   };
+
+  const remainingTickets = activeBatches.reduce((sum, batch) => {
+    return sum + Math.max(0, batch.quantity_total - batch.quantity_reserved - batch.quantity_sold);
+  }, 0);
+  const paymentProvider = resolveCheckoutProvider({
+    primary_payment_provider: event.organizers?.primary_payment_provider ?? null,
+    mp_access_token: null,
+    mp_connection_status: event.organizers?.mp_connection_status ?? null,
+    asaas_wallet_id: event.organizers?.asaas_wallet_id ?? null,
+    asaas_connection_status: event.organizers?.asaas_connection_status ?? null,
+  }).provider;
 
   return (
     <main className="ticket-grid">
@@ -92,7 +114,7 @@ export default async function EventPage({
           <div className="glass-panel self-end rounded-lg p-5">
             <p className="text-sm font-bold uppercase text-[#ff1493]">Resumo premium</p>
             <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-              <MiniStat icon={<Users className="h-4 w-4" />} label="Publico" value="+8k" />
+              <MiniStat icon={<Users className="h-4 w-4" />} label="Disponíveis" value={String(remainingTickets)} />
               <MiniStat icon={<Music2 className="h-4 w-4" />} label="Line-up" value="Live" />
               <MiniStat icon={<ShieldCheck className="h-4 w-4" />} label="Entrada" value="QR" />
             </div>
@@ -123,6 +145,10 @@ export default async function EventPage({
           demoMode={demoMode}
           feeContract={feeContract}
           initialPromoterCode={query.ref?.trim() ?? ""}
+          initialCouponCode={query.cupom?.trim() ?? ""}
+          initialBuyerName={buyerName}
+          initialBuyerEmail={buyerEmail}
+          paymentProvider={paymentProvider}
         />
       </section>
     </main>

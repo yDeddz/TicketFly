@@ -3,6 +3,7 @@
 import { Loader2, Plus, ToggleLeft, ToggleRight } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatCurrency } from "@/lib/format";
 
 type Promoter = {
@@ -26,6 +27,7 @@ export function OrganizerPromotersManager() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [loaded, setLoaded] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState<Promoter | null>(null);
 
   async function load() {
     const res = await fetch("/api/organizer/promoters");
@@ -72,22 +74,35 @@ export function OrganizerPromotersManager() {
     });
   }
 
+  function requestToggle(promoter: Promoter) {
+    if (promoter.is_active) {
+      setPendingToggle(promoter);
+      return;
+    }
+    toggleActive(promoter);
+  }
+
   function toggleActive(promoter: Promoter) {
+    setPendingToggle(null);
     setMessage(null);
     setError(null);
     startTransition(async () => {
-      const res = await fetch(`/api/organizer/promoters/${promoter.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !promoter.is_active }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Erro ao atualizar");
-        return;
+      try {
+        const res = await fetch(`/api/organizer/promoters/${promoter.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: !promoter.is_active }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          setError(data?.error ?? "Erro ao atualizar");
+          return;
+        }
+        setMessage(data.is_active ? "Promotor ativado." : "Promotor desativado.");
+        await load();
+      } catch {
+        setError("Falha de rede ao atualizar promotor");
       }
-      setMessage(data.is_active ? "Promotor ativado." : "Promotor desativado.");
-      await load();
     });
   }
 
@@ -200,7 +215,7 @@ export function OrganizerPromotersManager() {
                     <button
                       type="button"
                       disabled={pending}
-                      onClick={() => toggleActive(p)}
+                      onClick={() => requestToggle(p)}
                       className="inline-flex items-center gap-1 text-xs font-bold text-white/70 hover:text-white"
                     >
                       {p.is_active ? <ToggleRight className="h-4 w-4 text-emerald-300" /> : <ToggleLeft className="h-4 w-4" />}
@@ -213,6 +228,23 @@ export function OrganizerPromotersManager() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingToggle)}
+        title="Desativar promotor?"
+        description={
+          pendingToggle
+            ? `O código ${pendingToggle.code} deixará de atribuir novas vendas.`
+            : undefined
+        }
+        confirmLabel="Desativar"
+        tone="danger"
+        busy={pending}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={() => {
+          if (pendingToggle) toggleActive(pendingToggle);
+        }}
+      />
     </div>
   );
 }

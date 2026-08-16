@@ -30,6 +30,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
   }
 
+  if (input.data.status === "published") {
+    const { count } = await admin
+      .from("ticket_batches")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", id)
+      .eq("is_active", true);
+    if (!count) {
+      return NextResponse.json(
+        { error: "Adicione pelo menos um lote ativo antes de publicar" },
+        { status: 409 },
+      );
+    }
+  }
+
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
