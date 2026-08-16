@@ -55,8 +55,9 @@ Monitore em **Supabase Dashboard → Integrations → Cron** ou na tabela
 `cron.job_run_details`.
 
 A rota `/api/cron/expire-reservations` e o `CRON_SECRET` permanecem como
-fallback. Em Vercel (plano com Cron), `vercel.json` chama essa rota a cada
-10 minutos com `Authorization: Bearer $CRON_SECRET`.
+fallback. O projeto na Vercel está no plano Hobby, que só aceita cron **uma
+vez por dia** — `vercel.json` chama essa rota às 06:00 UTC. Expiração a cada
+10 minutos continua no Supabase Cron (`pg_cron`).
 
 ## Ambiente de testes (homologação)
 

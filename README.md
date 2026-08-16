@@ -238,8 +238,8 @@ Passo a passo para Leonardo + yDeddz até 31/08: [`docs/PLANO-GO-LIVE.md`](docs/
 O Supabase Cron chama `expire_stale_reservations(30)` diretamente no banco a
 cada 10 minutos. A migration
 `20260808111613_schedule_expire_stale_reservations.sql` habilita o `pg_cron`
-e cria o job. A rota HTTP protegida por `CRON_SECRET` fica apenas como fallback
-manual.
+e cria o job. A rota HTTP protegida por `CRON_SECRET` fica como fallback:
+na Vercel Hobby o cron só pode rodar uma vez por dia (`vercel.json`).
 
 ## Melhorias Futuras
 
