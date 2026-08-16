@@ -14,6 +14,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+function appMetadataBase() {
+  const raw = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.ticketfly.app")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+  try {
+    return new URL(raw);
+  } catch {
+    return new URL("https://www.ticketfly.app");
+  }
+}
+
 export const metadata: Metadata = {
   title: {
     default: "TicketFly",
@@ -21,7 +32,7 @@ export const metadata: Metadata = {
   },
   description: "Bilheteria online premium para shows, festivais e experiencias VIP. Voe mais alto. Viva experiências.",
   applicationName: "TicketFly",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  metadataBase: appMetadataBase(),
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

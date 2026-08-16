@@ -44,6 +44,13 @@ function usable(value) {
   return true;
 }
 
+function envLine(key, value) {
+  // Aspas simples: a chave Asaas começa com $ e o import da Vercel
+  // interpreta $VAR se o valor for sem aspas ou com aspas duplas.
+  const escaped = value.replaceAll("'", "'\\''");
+  return `${key}='${escaped}'`;
+}
+
 const env = {
   ...loadEnvFile(".env.example"),
   ...loadEnvFile(".env"),
@@ -62,7 +69,7 @@ const skipped = [];
 
 for (const key of KEYS) {
   if (key === "NEXT_PUBLIC_APP_URL") {
-    lines.push(`${key}=${CANONICAL_APP_URL}`);
+    lines.push(envLine(key, CANONICAL_APP_URL));
     included.push(key);
     continue;
   }
@@ -71,7 +78,7 @@ for (const key of KEYS) {
     skipped.push(key);
     continue;
   }
-  lines.push(`${key}=${value}`);
+  lines.push(envLine(key, value));
   included.push(key);
 }
 

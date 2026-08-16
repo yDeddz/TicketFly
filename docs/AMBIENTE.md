@@ -32,6 +32,7 @@ npm run ops:export-env
 ```
 
 Gera `.env.vercel.import` (já no `.gitignore`, **não** commitar, **não** mandar no GitHub).  
+Valores vão em **aspas simples** — a `ASAAS_API_KEY` começa com `$` e sem aspas o import da Vercel come o `$`.  
 `NEXT_PUBLIC_APP_URL` sai forçado como `https://www.ticketfly.app`. MP placeholder é pulado.
 
 **André, logado na Vercel dele:**
