@@ -5,7 +5,7 @@
 Documento para **Leonardo (ops/plataforma)** e **yDeddz (dono do repo e do domínio)**.  
 Meta: vender e validar ingresso de verdade até **31/08/2026**.
 
-Site público: [https://ticket-fly.vercel.app](https://ticket-fly.vercel.app)  
+Site público: [https://www.ticketfly.app](https://www.ticketfly.app)  
 Repo certo: `github.com/yDeddz/TicketFly`  
 Não usar: `realg333/ticketfly` nem `ticketfly.vercel.app` (cópia antiga).
 
@@ -17,7 +17,7 @@ Mapa do ambiente (Vercel Hobby, Supabase do yDeddz, cron externo, webhooks): [`A
 
 | Pessoa | Papel | O que é responsabilidade dela |
 |---|---|---|
-| **yDeddz** | Dono: GitHub + **Vercel `ticket-fly`** + Supabase TicketFly | Convidar Leonardo nesses dois; env Production; webhook Asaas; Auth URLs; cron externo; SQL |
+| **yDeddz / André** | Dono: GitHub + Vercel `ticket-fly` + domínio + Supabase | Env Production (import `.env`), webhook Asaas, Auth URLs, cron externo, SQL |
 | **Leonardo** | Ops da plataforma + código | Admin no painel, contrato da casa, checklist, seed de teste, conferir compra → QR → check-in |
 | **Casa / organizador** | Quem vende o evento | Conectar Asaas (ou MP), criar evento + lote, publicar, ensaiar porta |
 
@@ -25,7 +25,7 @@ Se a “casa” for o próprio yDeddz, ele faz as duas colunas (GitHub e organiz
 
 ---
 
-## O que já existe no código (e no ar em ticket-fly.vercel.app)
+## O que já existe no código (e no ar em www.ticketfly.app)
 
 - Compra com nome/e-mail reais → pagamento → QR rotativo (~90s) + código manual
 - Check-in por câmera ou código `XXXX-XXXX`
@@ -59,12 +59,12 @@ O que **ainda não existe** (não bloquear o 1º evento):
 
 O deploy Hobby **não** pode ter cron `*/10` no `vercel.json` — isso derruba o build. O agendamento de 10 min é o **site externo** ([`AMBIENTE.md`](AMBIENTE.md)).
 
-Conferir: [ticket-fly.vercel.app/ajuda](https://ticket-fly.vercel.app/ajuda) fala Pix/cartão (não só Mercado Pago).
+Conferir: [www.ticketfly.app/ajuda](https://www.ticketfly.app/ajuda) fala Pix/cartão (não só Mercado Pago).
 
 Env **obrigatório na Vercel** (Production) — **os mesmos nomes** do `.env.local`, apontando para o Supabase `cbgcukhyytifirlvoygr`:
 
 ```txt
-NEXT_PUBLIC_APP_URL=https://ticket-fly.vercel.app
+NEXT_PUBLIC_APP_URL=https://www.ticketfly.app
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
@@ -83,6 +83,8 @@ MERCADO_PAGO_WEBHOOK_SECRET=...
 ```
 
 Conferir: `ASAAS_API_URL` em produção **não** pode ser sandbox.
+
+Em massa na Vercel do André: `npm run ops:export-env` → colar `.env.vercel.import` em Settings → Environment Variables → Production → Redeploy. Detalhe: [`AMBIENTE.md`](AMBIENTE.md).
 
 ### 2) Banco (SQL Editor do Supabase **do yDeddz**, projeto TicketFly)
 
@@ -111,14 +113,14 @@ Sem isso o Pix/cartão confirma no banco do provedor e o ingresso **fica pending
 
 | Provedor | URL |
 |---|---|
-| Asaas | `https://ticket-fly.vercel.app/api/webhooks/asaas` |
-| Mercado Pago | `https://ticket-fly.vercel.app/api/webhooks/mercado-pago` (tópico `payment`) |
+| Asaas | `https://www.ticketfly.app/api/webhooks/asaas` |
+| Mercado Pago | `https://www.ticketfly.app/api/webhooks/mercado-pago` (tópico `payment`) |
 
 O token/secret do webhook tem que ser o mesmo da Vercel (`ASAAS_WEBHOOK_TOKEN` / `MERCADO_PAGO_WEBHOOK_SECRET`).
 
 ### 4) Contrato da casa (Leonardo no admin)
 
-1. Entrar em `https://ticket-fly.vercel.app/admin`
+1. Entrar em `https://www.ticketfly.app/admin`
 2. **Contratos**: criar ou aprovar a casa (limiar da taxa em **reais**, ex. `120,00`)
 3. Se criar usuário novo, avisar o parceiro para olhar o e-mail e definir senha (`/redefinir-senha`, código de 8 dígitos)
 4. Opcional: **Equipe porta** em `/admin/equipe` — só se a casa tiver operador que **não** é o organizador
@@ -178,14 +180,14 @@ No celular, no local (ou simulando Wi-Fi ruim):
 
 **Pode abrir venda pública só se tudo isto estiver verde:**
 
-- [ ] `ticket-fly.vercel.app` está com **este** código (não a FAQ antiga só de Mercado Pago)
+- [ ] `www.ticketfly.app` está com **este** código (não a FAQ antiga só de Mercado Pago)
 - [ ] Webhook Asaas (e MP, se usar) testado: pagamento → ingresso `paid`
 - [ ] Casa com contrato **aprovado** e provedor **conectado**
 - [ ] Evento **publicado** com lote ativo
 - [ ] Check-in testado no celular
 - [ ] `TICKET_QR_SECRET` na Vercel **não** vai ser trocado no meio das vendas
 - [ ] Cron externo 10 min no host certo, com o mesmo `CRON_SECRET` da Vercel
-- [ ] Auth URLs do Supabase incluem `ticket-fly.vercel.app` (ver [`AMBIENTE.md`](AMBIENTE.md))
+- [ ] Auth URLs do Supabase incluem `www.ticketfly.app` (ver [`AMBIENTE.md`](AMBIENTE.md))
 
 **Não abrir se:** pagamento confirma no Asaas e o QR não libera.
 
@@ -195,7 +197,7 @@ No celular, no local (ou simulando Wi-Fi ruim):
 
 | O quê | URL |
 |---|---|
-| Site | https://ticket-fly.vercel.app |
+| Site | https://www.ticketfly.app |
 | Eventos | /eventos |
 | Login | /login |
 | Admin | /admin |
@@ -226,8 +228,8 @@ Runbook técnico (env, secret, cron): [`docs/RUNBOOK.md`](RUNBOOK.md).
 
 ## Combinado entre os dois
 
-1. yDeddz convida Leonardo no time Vercel `ticket-fly` e no Supabase TicketFly ([`AMBIENTE.md`](AMBIENTE.md)).
-2. Os dois travam env/webhook/cron **só** em `ticket-fly.vercel.app`.
-3. Leonardo libera admin + contrato no banco do yDeddz.
+1. André importa o `.env.vercel.import` na Vercel `ticket-fly` e trava webhook/cron/Auth em `www.ticketfly.app` ([`AMBIENTE.md`](AMBIENTE.md)).
+2. Leonardo programa e dá push em `yDeddz/TicketFly` `main`.
+3. Leonardo libera admin + contrato no banco do André.
 4. Casa conecta Asaas e publica o evento.
 5. Os dois fazem **uma** compra real pequena e **um** check-in antes de anunciar.

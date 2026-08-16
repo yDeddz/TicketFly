@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "ops:check": "node scripts/ops-check.mjs"
+    "ops:check": "node scripts/ops-check.mjs",
+    "ops:export-env": "node scripts/export-vercel-env.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

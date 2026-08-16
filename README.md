@@ -208,10 +208,12 @@ where email = 'seu-email@dominio.com';
 
 ### Vercel
 
-Configure as variáveis em Project Settings > Environment Variables:
+Domínio público: `https://www.ticketfly.app` (projeto `ticket-fly` do André).
+Gerar arquivo para colar em massa: `npm run ops:export-env` → André importa em
+Project Settings → Environment Variables ([upload em massa](https://vercel.com/changelog/bulk-upload-now-available-for-environment-variables)).
 
 ```txt
-NEXT_PUBLIC_APP_URL=https://seu-dominio.com
+NEXT_PUBLIC_APP_URL=https://www.ticketfly.app
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
 SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role

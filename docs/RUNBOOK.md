@@ -48,7 +48,7 @@ O plano Vercel é **Hobby**: cron `*/10` no `vercel.json` **falha o deploy**.
 O agendamento a cada 10 minutos é um **site externo** batendo na rota HTTP.
 
 ```txt
-GET ou POST https://ticket-fly.vercel.app/api/cron/expire-reservations
+GET ou POST https://www.ticketfly.app/api/cron/expire-reservations
 Authorization: Bearer <CRON_SECRET>
 # ou: x-cron-secret: <CRON_SECRET>
 ```

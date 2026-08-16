@@ -4,10 +4,14 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-const CANONICAL_APP_HOST = "ticket-fly.vercel.app";
+const CANONICAL_APP_HOST = "www.ticketfly.app";
 const CANONICAL_SUPABASE_REF = "cbgcukhyytifirlvoygr";
 const FORBIDDEN_SUPABASE_REF = "kxtpcsxwwdqsffenkcjn";
-const FORBIDDEN_APP_HOST = "ticketfly.vercel.app";
+const FORBIDDEN_APP_HOSTS = new Set([
+  "ticketfly.vercel.app",
+  "ticket-fly.vercel.app",
+  "ticketfly.app",
+]);
 
 function loadEnvFile(fileName) {
   const filePath = resolve(ROOT, fileName);
@@ -118,8 +122,8 @@ if (projectRef === FORBIDDEN_SUPABASE_REF) {
   alignmentFailed = true;
 }
 
-if (appHost === FORBIDDEN_APP_HOST) {
-  console.log("  [FALHA] ticketfly.vercel.app é a cópia antiga. Use ticket-fly.vercel.app");
+if (FORBIDDEN_APP_HOSTS.has(appHost)) {
+  console.log(`  [FALHA] Host ${appHost} não é o público. Use https://www.ticketfly.app`);
   alignmentFailed = true;
 }
 
@@ -148,9 +152,10 @@ const appUrl = env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 console.log("\nPróximos passos");
 console.log("  1. npm run dev  (este .env.local fala com o banco de produção)");
 console.log("  2. yDeddz: SQL Editor do projeto TicketFly — função expire_stale_reservations + porta");
-console.log(`  3. Conferir job externo → ${cronUrl}`);
-console.log(`  4. Abrir ${appUrl.replace(/\/$/, "")}/eventos/ops-teste-agosto`);
-console.log("  5. Comprar, confirmar webhook Asaas e escanear em /checkin");
+console.log("  3. npm run ops:export-env → André cola na Vercel ticket-fly");
+console.log(`  4. Conferir job externo → ${cronUrl}`);
+console.log(`  5. Abrir ${appUrl.replace(/\/$/, "")}/eventos/ops-teste-agosto`);
+console.log("  6. Comprar, confirmar webhook Asaas e escanear em /checkin");
 
 if (missingRequired || !qrOk || !cronOk || (!mpReady && !asaasReady) || alignmentFailed) {
   console.log("\nAmbiente incompleto ou desalinhado. Ver docs/AMBIENTE.md.");
