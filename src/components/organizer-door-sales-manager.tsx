@@ -179,6 +179,9 @@ export function OrganizerDoorSalesManager({ events }: { events: DoorSaleEvent[] 
           "Não foi possível criar a transação",
         );
         setError(apiError.message);
+        if (response.status === 422 || response.status === 409) {
+          setIdempotencyKey(crypto.randomUUID());
+        }
         return;
       }
       setSale(body);

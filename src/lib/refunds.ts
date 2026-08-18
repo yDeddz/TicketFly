@@ -41,6 +41,7 @@ export async function refundTicketLocally(args: {
   let providerRefunded = false;
   let providerAttempted = false;
   const paymentId = ticket.payment_id;
+  let providerPaymentId: string | null = null;
 
   if (paymentId) {
     const { data: payment } = await admin
@@ -48,6 +49,8 @@ export async function refundTicketLocally(args: {
       .select("id,status,provider,provider_payment_id,amount_cents")
       .eq("id", paymentId)
       .single();
+
+    providerPaymentId = payment?.provider_payment_id ?? null;
 
     if (
       payment &&
@@ -58,57 +61,34 @@ export async function refundTicketLocally(args: {
       providerAttempted = true;
       providerRefunded = await refundViaProvider(payment.provider, payment.provider_payment_id);
     }
-
-    if (payment && payment.status !== "refunded") {
-      await admin
-        .from("payments")
-        .update({
-          status: "refunded",
-          raw_payload: {
-            refunded_by: args.actorUserId,
-            reason: args.reason ?? null,
-            provider_refund_attempted: providerAttempted,
-            provider_refunded: providerRefunded,
-            mp_refund_attempted: providerAttempted,
-            mp_refunded: providerRefunded,
-            at: new Date().toISOString(),
-          },
-        })
-        .eq("id", payment.id);
-    }
   }
 
-  const previousStatus = ticket.status;
+  if (!paymentId) {
+    if (ticket.status !== "pending") {
+      return { ok: false as const, error: "Ingresso pago sem pagamento vinculado", status: 409 };
+    }
+    const { error: releaseError } = await admin.rpc("release_reserved_ticket", {
+      p_ticket_id: args.ticketId,
+    });
+    if (releaseError) {
+      return { ok: false as const, error: "Não foi possível cancelar o ingresso", status: 500 };
+    }
+  } else {
+    const { error: cancelError } = await admin.rpc("apply_payment_status", {
+      p_payment_id: paymentId,
+      p_status: ticket.status === "pending" ? "cancelled" : "refunded",
+      p_provider_payment_id: providerPaymentId,
+      p_payload: {
+        source: "refundTicketLocally",
+        actor: args.actorUserId,
+        reason: args.reason ?? null,
+        provider_refund_attempted: providerAttempted,
+        provider_refunded: providerRefunded,
+      },
+    });
 
-  await admin
-    .from("tickets")
-    .update({
-      status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-      cancelled_by: args.actorUserId,
-    })
-    .eq("id", ticket.id);
-
-  // Invalidate any live QR / Wallet barcodes bound to the previous secret.
-  await admin.rpc("rotate_ticket_qr_token", { p_ticket_id: ticket.id });
-
-  const { data: batch } = await admin
-    .from("ticket_batches")
-    .select("quantity_sold,quantity_reserved")
-    .eq("id", ticket.ticket_batch_id)
-    .single();
-
-  if (batch) {
-    if (previousStatus === "paid" || previousStatus === "used") {
-      await admin
-        .from("ticket_batches")
-        .update({ quantity_sold: Math.max((batch.quantity_sold ?? 0) - 1, 0) })
-        .eq("id", ticket.ticket_batch_id);
-    } else if (previousStatus === "pending") {
-      await admin
-        .from("ticket_batches")
-        .update({ quantity_reserved: Math.max((batch.quantity_reserved ?? 0) - 1, 0) })
-        .eq("id", ticket.ticket_batch_id);
+    if (cancelError) {
+      return { ok: false as const, error: "Não foi possível cancelar o ingresso", status: 500 };
     }
   }
 

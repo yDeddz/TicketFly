@@ -46,9 +46,13 @@ export default async function DoorSalesPage() {
       title: event.title,
       startsAt: event.starts_at,
       batches: (event.ticket_batches ?? [])
-        .filter(
-          (batch) => batch.is_active,
-        )
+        .filter((batch) => {
+          if (!batch.is_active) return false;
+          const now = Date.now();
+          if (new Date(batch.sales_start_at).getTime() > now) return false;
+          if (batch.sales_end_at && new Date(batch.sales_end_at).getTime() < now) return false;
+          return true;
+        })
         .map((batch) => ({
           id: batch.id,
           name: batch.name,

@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Expire abandoned pending reservations.
- * Production scheduler is an external cron (Vercel Hobby cannot run */10).
+ * Production scheduler is an external HTTP cron. Hobby cannot use a 10-minute Vercel schedule.
  * Protect with CRON_SECRET: Authorization: Bearer <CRON_SECRET>
  * or x-cron-secret: <CRON_SECRET>
  */

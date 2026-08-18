@@ -31,17 +31,20 @@ Sim: a Vercel aceita [upload/cola de um `.env` inteiro](https://vercel.com/chang
 npm run ops:export-env
 ```
 
-Gera `.env.vercel.import` (já no `.gitignore`, **não** commitar, **não** mandar no GitHub).  
-Valores vão em **aspas simples** — a `ASAAS_API_KEY` começa com `$` e sem aspas o import da Vercel come o `$`.  
-`NEXT_PUBLIC_APP_URL` sai forçado como `https://www.ticketfly.app`. MP placeholder é pulado.
+Gera dois arquivos gitignored:
 
-**André, logado na Vercel dele:**
+- `.env.vercel.import` — só `CHAVE=valor`, **sem** aspas, **sem** `#`, **sem** `$` (a UI da Vercel recusa o lote se tiver `$` ou aspas)
+- `.env.vercel.asaas.value` — valor cru da `ASAAS_API_KEY` (começa com `$`) para o campo **Value**
 
-1. Abrir [ticket-fly → Environment Variables](https://vercel.com/ticket-fly/ticket-fly/settings/environment-variables)
-2. Colar o conteúdo do arquivo **ou** Import `.env`
-3. Marcar **Production** (e Preview se for o mesmo banco)
-4. Se `NEXT_PUBLIC_APP_URL` já existir com `ticket-fly.vercel.app`, **editar** para `https://www.ticketfly.app`
-5. **Deployments** → último Production → ⋮ → **Redeploy** (env nova não entra no deploy antigo)
+`NEXT_PUBLIC_APP_URL` sai `https://www.ticketfly.app`.
+
+**André:**
+
+1. [Environment Variables](https://vercel.com/ticket-fly/ticket-fly/settings/environment-variables)
+2. **Apaga** as chaves que já existem (colar de novo **não** sobrescreve)
+3. Cola o `.env.vercel.import` → Production → Save
+4. Add `ASAAS_API_KEY` → cola o `.env.vercel.asaas.value` **só no Value** (não no nome, sem aspas, sem `\`)
+5. Redeploy do deploy **Ready**
 
 Não dá para o Leonardo empurrar env pela CLI: o time `ticket-fly` é Hobby, só o André tem o dashboard.
 

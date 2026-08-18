@@ -70,24 +70,31 @@ function rpcError(message?: string) {
   if (message.includes("idempotency_conflict")) {
     return new DoorSaleError("Esta tentativa já foi usada com outros dados", 409, "IDEMPOTENCY_CONFLICT");
   }
+  if (message.includes("organizer_not_approved")) {
+    return new DoorSaleError("Organizador ainda não está aprovado", 409, "ORGANIZER_NOT_APPROVED");
+  }
   return new DoorSaleError("Não foi possível criar a venda", 500, "DOOR_SALE_FAILED");
 }
 
-async function compensateRejectedProviderRequest(paymentId: string, ticketId: string, reason: string) {
+async function compensateRejectedProviderRequest(paymentId: string, reason: string) {
   const admin = createAdminClient();
-  await admin.rpc("release_reserved_ticket", { p_ticket_id: ticketId });
-  await admin
-    .from("payments")
-    .update({
-      status: "cancelled",
-      raw_payload: {
-        source: "door_sale",
-        provider_state: "rejected_before_creation",
-        reason,
-      },
-    })
-    .eq("id", paymentId)
-    .eq("status", "pending");
+  const { error } = await admin.rpc("apply_payment_status", {
+    p_payment_id: paymentId,
+    p_status: "cancelled",
+    p_provider_payment_id: null,
+    p_payload: {
+      source: "door_sale",
+      provider_state: "rejected_before_creation",
+      reason: reason.slice(0, 500),
+    },
+  });
+  if (error) {
+    throw new DoorSaleError(
+      "O Asaas recusou os dados e a reserva não pôde ser liberada. Tente de novo.",
+      503,
+      "DOOR_SALE_COMPENSATE_FAILED",
+    );
+  }
 }
 
 export async function createOrResumeDoorSale(input: DoorSaleInput) {
@@ -141,7 +148,7 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
       const recovered = await asaasFindPaymentByExternalReference(reservation.payment_id);
       if (recovered?.id) {
         providerPaymentId = recovered.id;
-        checkoutUrl = recovered.invoiceUrl ?? null;
+        checkoutUrl = recovered.invoiceUrl ?? checkoutUrl;
       }
     }
 
@@ -178,10 +185,6 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
       checkoutUrl = payment.invoiceUrl ?? null;
     }
 
-    if (!checkoutUrl) {
-      throw new DoorSaleError("Asaas não retornou o link de pagamento", 502, "ASAAS_LINK_MISSING");
-    }
-
     await admin
       .from("payments")
       .update({
@@ -197,6 +200,10 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
       })
       .eq("id", reservation.payment_id)
       .eq("status", "pending");
+
+    if (!checkoutUrl) {
+      throw new DoorSaleError("Asaas não retornou o link de pagamento", 502, "ASAAS_LINK_MISSING");
+    }
 
     const pix =
       input.paymentMethod === "pix"
@@ -214,16 +221,14 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
     if (cause instanceof DoorSaleError) throw cause;
 
     if (cause instanceof AsaasRequestError && cause.status >= 400 && cause.status < 500) {
-      await compensateRejectedProviderRequest(
-        reservation.payment_id,
-        reservation.ticket_id,
-        cause.message,
-      );
-      throw new DoorSaleError(
-        "O Asaas recusou os dados da cobrança. Confira CPF, celular e conexão da conta.",
-        422,
-        "ASAAS_REJECTED",
-      );
+      if (!providerPaymentId) {
+        await compensateRejectedProviderRequest(reservation.payment_id, cause.message);
+        throw new DoorSaleError(
+          "O Asaas recusou os dados da cobrança. Confira CPF, celular e conexão da conta.",
+          422,
+          "ASAAS_REJECTED",
+        );
+      }
     }
 
     throw new DoorSaleError(
