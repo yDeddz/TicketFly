@@ -20,6 +20,8 @@ type AdminOrganizer = {
   fee_percent_above_threshold: number;
   service_fee_platform_share_percent: number;
   mp_connection_status: MpConnectionStatus;
+  pagarme_recipient_id: string | null;
+  pagarme_connection_status: MpConnectionStatus;
   partnership_notes: string | null;
   created_at: string;
 };
@@ -30,6 +32,7 @@ type FormState = {
   feePercentUptoThreshold: string;
   feePercentAboveThreshold: string;
   serviceFeePlatformSharePercent: string;
+  pagarmeRecipientId: string;
 };
 
 const statusLabels: Record<AdminOrganizer["status"], string> = {
@@ -58,7 +61,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
     partnershipNotes: "",
     feeThresholdReais: "120,00",
     feePercentUptoThreshold: "12",
-    feePercentAboveThreshold: "9",
+    feePercentAboveThreshold: "12",
     serviceFeePlatformSharePercent: "50",
     status: "approved" as AdminOrganizer["status"],
   });
@@ -81,6 +84,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
         feePercentUptoThreshold: Number(form.feePercentUptoThreshold),
         feePercentAboveThreshold: Number(form.feePercentAboveThreshold),
         serviceFeePlatformSharePercent: Number(form.serviceFeePlatformSharePercent),
+        pagarmeRecipientId: form.pagarmeRecipientId,
       }),
     });
     const body = await response.json().catch(() => null);
@@ -229,10 +233,30 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
                   ) : null}
                 </div>
                 <span className="rounded-md border border-white/10 px-3 py-1 text-xs font-bold uppercase text-white/70">
-                  MP: {organizer.mp_connection_status}
+                  Pagar.me: {organizer.pagarme_connection_status}
                 </span>
               </div>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <label className="grid gap-2 text-sm md:col-span-2">
+                  ID do recebedor Pagar.me
+                  <input
+                    placeholder="rp_..."
+                    value={form.pagarmeRecipientId}
+                    onChange={(e) =>
+                      setForms((current) => ({
+                        ...current,
+                        [organizer.id]: {
+                          ...current[organizer.id],
+                          pagarmeRecipientId: e.target.value.trim(),
+                        },
+                      }))
+                    }
+                    className="h-11 rounded-md border border-white/10 bg-[#0d0b10] px-3 font-mono"
+                  />
+                  <span className="text-xs text-[#c9aabc]">
+                    Somente administradores veem e alteram este campo.
+                  </span>
+                </label>
                 <label className="grid gap-2 text-sm">
                   Status
                   <select
@@ -349,5 +373,6 @@ function organizerToForm(organizer: AdminOrganizer): FormState {
     feePercentUptoThreshold: String(organizer.fee_percent_upto_threshold),
     feePercentAboveThreshold: String(organizer.fee_percent_above_threshold),
     serviceFeePlatformSharePercent: String(organizer.service_fee_platform_share_percent ?? 50),
+    pagarmeRecipientId: organizer.pagarme_recipient_id ?? "",
   };
 }

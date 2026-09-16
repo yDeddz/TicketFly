@@ -4,6 +4,10 @@ export function normalizeCpf(value: string) {
   return value.replace(/\D/g, "");
 }
 
+export function normalizeDocument(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 export function isValidCpf(value: string) {
   const cpf = normalizeCpf(value);
   if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
@@ -20,6 +24,30 @@ export function isValidCpf(value: string) {
   return digit(9) === Number(cpf[9]) && digit(10) === Number(cpf[10]);
 }
 
+export function isValidCnpj(value: string) {
+  const cnpj = normalizeDocument(value);
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+
+  const calc = (baseLength: number) => {
+    const weights =
+      baseLength === 12
+        ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const sum = weights.reduce((acc, weight, index) => acc + Number(cnpj[index]) * weight, 0);
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  return calc(12) === Number(cnpj[12]) && calc(13) === Number(cnpj[13]);
+}
+
+export function isValidCpfOrCnpj(value: string) {
+  const digits = normalizeDocument(value);
+  if (digits.length === 11) return isValidCpf(digits);
+  if (digits.length === 14) return isValidCnpj(digits);
+  return false;
+}
+
 export function normalizeBrazilianPhone(value: string) {
   const digits = value.replace(/\D/g, "");
   if (digits.startsWith("55") && digits.length >= 12) return digits.slice(2);
@@ -31,6 +59,20 @@ const cpfSchema = z
   .trim()
   .transform(normalizeCpf)
   .refine(isValidCpf, "CPF inválido");
+
+const brazilianDocumentSchema = z
+  .string()
+  .trim()
+  .transform(normalizeDocument)
+  .refine(isValidCpfOrCnpj, "CPF ou CNPJ inválido");
+
+const httpsUrlSchema = z
+  .string()
+  .trim()
+  .url("URL inválida")
+  .refine((url) => /^https:\/\//i.test(url), "Use uma URL https");
+
+const companyTypeSchema = z.enum(["MEI", "LIMITED", "INDIVIDUAL", "ASSOCIATION"]);
 
 const brazilianPhoneSchema = z
   .string()
@@ -152,7 +194,13 @@ export const checkinSchema = z.object({
   deviceInfo: z.string().trim().max(240).optional(),
 });
 
-export const eventSchema = z.object({
+const eventBatchInputSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  priceCents: z.coerce.number().int().min(0),
+  quantityTotal: z.coerce.number().int().min(1).max(100000),
+});
+
+const eventFieldsSchema = z.object({
   title: z.string().trim().min(3).max(120),
   description: z.string().trim().max(3000).optional(),
   venueName: z.string().trim().min(2).max(140),
@@ -160,20 +208,50 @@ export const eventSchema = z.object({
   city: z.string().trim().min(2).max(100),
   startsAt: z.string().datetime(),
   endsAt: z.string().datetime().optional().or(z.literal("")),
-  coverImageUrl: z.string().url().optional().or(z.literal("")),
+  coverImageUrl: httpsUrlSchema.optional().or(z.literal("")),
+  batch: eventBatchInputSchema.optional(),
 });
 
-export const adminEventUpdateSchema = eventSchema
-  .extend({
-    status: z.enum(["draft", "published", "cancelled", "finished"]),
+function endsAfterStart(event: { startsAt: string; endsAt?: string }) {
+  return !event.endsAt || new Date(event.endsAt).getTime() > new Date(event.startsAt).getTime();
+}
+
+export const eventSchema = eventFieldsSchema.refine(endsAfterStart, {
+  message: "A data de término precisa ser posterior ao início",
+  path: ["endsAt"],
+});
+
+export const organizerEventUpdateSchema = z
+  .object({
+    status: z.enum(["draft", "published", "cancelled", "finished"]).optional(),
+    title: z.string().trim().min(3).max(120).optional(),
+    description: z.string().trim().max(3000).optional().or(z.literal("")),
+    venueName: z.string().trim().min(2).max(140).optional(),
+    address: z.string().trim().min(5).max(240).optional(),
+    city: z.string().trim().min(2).max(100).optional(),
+    startsAt: z.string().datetime().optional(),
+    endsAt: z.string().datetime().optional().or(z.literal("")),
+    coverImageUrl: httpsUrlSchema.optional().or(z.literal("")),
   })
   .refine(
-    (event) => !event.endsAt || new Date(event.endsAt).getTime() > new Date(event.startsAt).getTime(),
+    (event) => {
+      if (!event.startsAt || !event.endsAt) return true;
+      return new Date(event.endsAt).getTime() > new Date(event.startsAt).getTime();
+    },
     {
-      message: "A data de termino precisa ser posterior ao inicio",
+      message: "A data de término precisa ser posterior ao início",
       path: ["endsAt"],
     },
   );
+
+export const adminEventUpdateSchema = eventFieldsSchema
+  .extend({
+    status: z.enum(["draft", "published", "cancelled", "finished"]),
+  })
+  .refine(endsAfterStart, {
+    message: "A data de término precisa ser posterior ao início",
+    path: ["endsAt"],
+  });
 
 export const batchSchema = z.object({
   eventId: z.string().uuid(),
@@ -185,21 +263,92 @@ export const batchSchema = z.object({
   switchAt: z.string().datetime().optional().or(z.literal("")),
 });
 
+export const batchUpdateSchema = z.object({
+  name: z.string().trim().min(2).max(80).optional(),
+  priceCents: z.coerce.number().int().min(0).optional(),
+  quantityTotal: z.coerce.number().int().min(1).max(100000).optional(),
+  salesEndAt: z.string().datetime().optional().nullable().or(z.literal("")),
+  isActive: z.boolean().optional(),
+});
+
 export const adminOrganizerUpdateSchema = z.object({
   status: z.enum(["pending", "approved", "rejected", "suspended"]),
   feeThresholdCents: z.coerce.number().int().min(0).max(10_000_000),
   feePercentUptoThreshold: z.coerce.number().min(0).max(40),
   feePercentAboveThreshold: z.coerce.number().min(0).max(40),
   serviceFeePlatformSharePercent: z.coerce.number().min(0).max(100).default(50),
+  pagarmeRecipientId: z
+    .string()
+    .trim()
+    .regex(/^rp_[A-Za-z0-9]+$/, "Recipient ID Pagar.me inválido")
+    .optional()
+    .or(z.literal("")),
 });
 
 export const organizerApplySchema = z.object({
   tradeName: z.string().trim().min(2).max(120),
   legalName: z.string().trim().min(2).max(160),
-  document: z.string().trim().min(11).max(32),
+  document: brazilianDocumentSchema,
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   city: z.string().trim().max(100).optional().or(z.literal("")),
   feeNote: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export const organizerProfileSchema = z
+  .object({
+    tradeName: z.string().trim().min(2).max(120),
+    legalName: z.string().trim().min(2).max(160),
+    document: brazilianDocumentSchema,
+    phone: brazilianPhoneSchema,
+    city: z.string().trim().min(2).max(100),
+    address: z.string().trim().min(2).max(200),
+    addressNumber: z.string().trim().min(1).max(20),
+    complement: z.string().trim().max(100).optional().or(z.literal("")),
+    province: z.string().trim().min(2).max(100),
+    postalCode: z
+      .string()
+      .trim()
+      .transform((value) => value.replace(/\D/g, ""))
+      .refine((value) => value.length === 8, "CEP inválido"),
+    birthDate: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Use AAAA-MM-DD")
+      .optional()
+      .or(z.literal("")),
+    companyType: companyTypeSchema.optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    if (data.document.length === 11 && !data.birthDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe a data de nascimento para CPF",
+        path: ["birthDate"],
+      });
+    }
+    if (data.document.length === 14 && !data.companyType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe o tipo da empresa para CNPJ",
+        path: ["companyType"],
+      });
+    }
+  });
+
+export const asaasConnectSchema = z.object({
+  tradeName: z.string().trim().min(2).max(120).optional(),
+  legalName: z.string().trim().min(2).max(160).optional(),
+  document: z.string().trim().optional(),
+  email: z.string().trim().email().max(160).optional().or(z.literal("")),
+  phone: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  address: z.string().trim().optional(),
+  addressNumber: z.string().trim().optional(),
+  complement: z.string().trim().optional(),
+  province: z.string().trim().optional(),
+  postalCode: z.string().trim().optional(),
+  birthDate: z.string().trim().optional(),
+  companyType: companyTypeSchema.optional().or(z.literal("")),
 });
 
 export const adminStaffSchema = z.object({
@@ -211,13 +360,13 @@ export const createContractSchema = z.object({
   email: z.string().trim().email(),
   tradeName: z.string().trim().min(2).max(120),
   legalName: z.string().trim().min(2).max(160),
-  document: z.string().trim().min(11).max(32),
+  document: brazilianDocumentSchema,
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   city: z.string().trim().max(100).optional().or(z.literal("")),
   partnershipNotes: z.string().trim().max(1000).optional().or(z.literal("")),
   feeThresholdCents: z.coerce.number().int().min(0).max(10_000_000).default(12000),
   feePercentUptoThreshold: z.coerce.number().min(0).max(40).default(12),
-  feePercentAboveThreshold: z.coerce.number().min(0).max(40).default(9),
+  feePercentAboveThreshold: z.coerce.number().min(0).max(40).default(12),
   serviceFeePlatformSharePercent: z.coerce.number().min(0).max(100).default(50),
   status: z.enum(["pending", "approved", "rejected", "suspended"]).default("approved"),
 });

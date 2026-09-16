@@ -26,22 +26,32 @@ create table public.organizers (
   legal_name text not null,
   trade_name text not null,
   document text not null,
+  document_digits text generated always as (regexp_replace(coalesce(document, ''), '\D', '', 'g')) stored,
   phone text,
   city text,
+  address text,
+  address_number text,
+  complement text,
+  province text,
+  postal_code text,
+  birth_date date,
+  company_type text,
   status public.organizer_status not null default 'pending',
   fee_threshold_cents integer not null default 12000,
   fee_percent_upto_threshold numeric(5,2) not null default 12.00,
-  fee_percent_above_threshold numeric(5,2) not null default 9.00,
+  fee_percent_above_threshold numeric(5,2) not null default 12.00,
   service_fee_platform_share_percent numeric(5,2) not null default 50.00,
   partnership_notes text,
   mp_collector_id text,
   mp_access_token text,
   mp_connection_status public.mp_connection_status not null default 'disconnected',
-  primary_payment_provider text not null default 'mercado_pago',
+  primary_payment_provider text not null default 'pagarme',
   asaas_account_id text,
   asaas_wallet_id text,
-  asaas_api_key text,
   asaas_connection_status public.mp_connection_status not null default 'disconnected',
+  asaas_account_status text,
+  pagarme_recipient_id text,
+  pagarme_connection_status public.mp_connection_status not null default 'disconnected',
   webhook_url text,
   webhook_secret text,
   webhook_enabled boolean not null default false,
@@ -61,7 +71,9 @@ create table public.organizers (
   constraint organizers_fee_upto_range check (fee_percent_upto_threshold >= 0 and fee_percent_upto_threshold <= 40),
   constraint organizers_fee_above_range check (fee_percent_above_threshold >= 0 and fee_percent_above_threshold <= 40),
   constraint organizers_fee_share_range check (service_fee_platform_share_percent >= 0 and service_fee_platform_share_percent <= 100),
-  constraint organizers_primary_payment_provider_check check (primary_payment_provider in ('mercado_pago', 'asaas')),
+  constraint organizers_primary_payment_provider_check check (primary_payment_provider in ('mercado_pago', 'asaas', 'pagarme')),
+  constraint organizers_pagarme_recipient_id_check check (pagarme_recipient_id is null or pagarme_recipient_id ~ '^rp_[A-Za-z0-9]+$'),
+  constraint organizers_company_type_check check (company_type is null or company_type in ('MEI', 'LIMITED', 'INDIVIDUAL', 'ASSOCIATION')),
   constraint organizers_webhook_url_format check (
     webhook_url is null
     or webhook_url ~* '^https://'
@@ -268,6 +280,9 @@ create table public.webhook_deliveries (
 
 create index users_role_idx on public.users(role);
 create index organizers_status_idx on public.organizers(status);
+create unique index organizers_document_digits_uidx
+  on public.organizers (document_digits)
+  where length(coalesce(document_digits, '')) >= 11;
 create index events_organizer_status_idx on public.events(organizer_id, status);
 create index events_slug_idx on public.events(slug);
 create index events_starts_at_idx on public.events(starts_at);
@@ -367,6 +382,79 @@ as $$
       and status = 'approved'
   );
 $$;
+
+create or replace function public.organizers_sanitize_self_write()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.is_admin() then
+    return NEW;
+  end if;
+
+  if auth.uid() is null then
+    return NEW;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    NEW.user_id := auth.uid();
+    NEW.status := 'pending';
+    NEW.fee_threshold_cents := 12000;
+    NEW.fee_percent_upto_threshold := 12;
+    NEW.fee_percent_above_threshold := 12;
+    NEW.service_fee_platform_share_percent := 50;
+    NEW.mp_collector_id := null;
+    NEW.mp_access_token := null;
+    NEW.mp_connection_status := 'disconnected';
+    NEW.primary_payment_provider := 'pagarme';
+    NEW.asaas_account_id := null;
+    NEW.asaas_wallet_id := null;
+    NEW.asaas_connection_status := 'disconnected';
+    NEW.asaas_account_status := null;
+    NEW.pagarme_recipient_id := null;
+    NEW.pagarme_connection_status := 'disconnected';
+    NEW.webhook_url := null;
+    NEW.webhook_secret := null;
+    NEW.webhook_enabled := false;
+    NEW.approved_by := null;
+    NEW.approved_at := null;
+    return NEW;
+  end if;
+
+  NEW.user_id := OLD.user_id;
+  NEW.status := OLD.status;
+  NEW.fee_threshold_cents := OLD.fee_threshold_cents;
+  NEW.fee_percent_upto_threshold := OLD.fee_percent_upto_threshold;
+  NEW.fee_percent_above_threshold := OLD.fee_percent_above_threshold;
+  NEW.service_fee_platform_share_percent := OLD.service_fee_platform_share_percent;
+  NEW.mp_collector_id := OLD.mp_collector_id;
+  NEW.mp_access_token := OLD.mp_access_token;
+  NEW.mp_connection_status := OLD.mp_connection_status;
+  NEW.primary_payment_provider := OLD.primary_payment_provider;
+  NEW.asaas_account_id := OLD.asaas_account_id;
+  NEW.asaas_wallet_id := OLD.asaas_wallet_id;
+  NEW.asaas_connection_status := OLD.asaas_connection_status;
+  NEW.asaas_account_status := OLD.asaas_account_status;
+  NEW.pagarme_recipient_id := OLD.pagarme_recipient_id;
+  NEW.pagarme_connection_status := OLD.pagarme_connection_status;
+  NEW.webhook_url := OLD.webhook_url;
+  NEW.webhook_secret := OLD.webhook_secret;
+  NEW.webhook_enabled := OLD.webhook_enabled;
+  NEW.webhook_events := OLD.webhook_events;
+  NEW.approved_by := OLD.approved_by;
+  NEW.approved_at := OLD.approved_at;
+  return NEW;
+end;
+$$;
+
+create trigger organizers_sanitize_self_write
+  before insert or update on public.organizers
+  for each row execute function public.organizers_sanitize_self_write();
+
+revoke execute on function public.organizers_sanitize_self_write()
+  from public, anon, authenticated;
 
 create or replace function public.reserve_ticket(
   p_batch_id uuid,
@@ -593,7 +681,7 @@ begin
   values (
     v_event.id, v_batch.id, v_amount_cents, v_fee_cents,
     v_platform_share_cents, v_partner_share_cents, 0, false, 0,
-    v_net_amount_cents, 'pending', 'asaas', 'door', p_payment_method,
+    v_net_amount_cents, 'pending', 'pagarme', 'door', p_payment_method,
     p_created_by, p_idempotency_key,
     jsonb_build_object('source', 'door_sale', 'provider_state', 'not_created')
   )
@@ -908,8 +996,8 @@ create policy "users can update own profile" on public.users for update using (i
 create policy "admins manage users" on public.users for all using (public.is_admin()) with check (public.is_admin());
 
 create policy "organizers read own record" on public.organizers for select using (user_id = auth.uid() or public.is_admin());
-create policy "users request organizer account" on public.organizers for insert with check (user_id = auth.uid());
-create policy "organizers update own pending data" on public.organizers for update using (user_id = auth.uid() or public.is_admin()) with check (user_id = auth.uid() or public.is_admin());
+create policy "users request organizer account" on public.organizers for insert with check (user_id = auth.uid() and status = 'pending');
+create policy "organizers update own profile" on public.organizers for update using (user_id = auth.uid() or public.is_admin()) with check (user_id = auth.uid() or public.is_admin());
 
 create policy "published events are public" on public.events for select using (status = 'published' or public.is_approved_organizer(organizer_id) or public.is_admin());
 create policy "approved organizers create events" on public.events for insert with check (public.is_approved_organizer(organizer_id) or public.is_admin());
@@ -977,6 +1065,15 @@ create policy "organizers read coupon redemptions" on public.coupon_redemptions 
 create policy "organizers read own webhook deliveries" on public.webhook_deliveries for select using (
   public.is_approved_organizer(organizer_id) or public.is_admin()
 );
+
+revoke update on public.organizers from anon;
+revoke update on public.organizers from authenticated;
+grant update (
+  trade_name, legal_name, document, phone, city, partnership_notes,
+  address, address_number, complement, province, postal_code, birth_date, company_type
+) on public.organizers to authenticated;
+revoke select (mp_access_token, webhook_secret, pagarme_recipient_id) on public.organizers from anon;
+revoke select (mp_access_token, webhook_secret, pagarme_recipient_id) on public.organizers from authenticated;
 
 revoke all on function public.reserve_ticket(uuid, text, text, uuid, text) from public, anon, authenticated;
 revoke all on function public.release_reserved_ticket(uuid) from public, anon, authenticated;

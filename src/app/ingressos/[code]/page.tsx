@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { TicketQrLive } from "@/components/ticket-qr-live";
 import { WalletButton } from "@/components/wallet-button";
+import { DownloadTicketButton } from "@/components/download-ticket-button";
 import { formatDateTime } from "@/lib/format";
 import {
   authorizeTicketAccess,
@@ -81,7 +82,24 @@ export default async function TicketPage({
           )}
 
           {ticket.status === "paid" ? (
-            <WalletButton code={ticket.code} accessToken={access} className="w-full [&_button]:w-full [&_button]:justify-center" />
+            <div className="grid gap-3">
+              <DownloadTicketButton
+                code={ticket.code}
+                accessToken={access}
+                className="w-full [&_button]:w-full [&_button]:justify-center"
+              />
+              <WalletButton
+                code={ticket.code}
+                accessToken={access}
+                className="w-full [&_button]:w-full [&_button]:justify-center"
+              />
+              <Link
+                href="/painel"
+                className="inline-flex h-11 items-center justify-center rounded-md border border-white/15 px-4 text-sm font-bold text-white/80 hover:bg-white/5"
+              >
+                Ver no meu perfil
+              </Link>
+            </div>
           ) : null}
 
           <p className="break-all rounded-md bg-[#210018] p-3 text-center font-mono text-xs text-[#ffb1d5]">

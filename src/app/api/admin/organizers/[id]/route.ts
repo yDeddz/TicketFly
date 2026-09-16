@@ -37,6 +37,9 @@ export async function PATCH(
     fee_percent_upto_threshold: input.data.feePercentUptoThreshold,
     fee_percent_above_threshold: input.data.feePercentAboveThreshold,
     service_fee_platform_share_percent: input.data.serviceFeePlatformSharePercent,
+    pagarme_recipient_id: input.data.pagarmeRecipientId || null,
+    pagarme_connection_status: input.data.pagarmeRecipientId ? "connected" : "disconnected",
+    primary_payment_provider: "pagarme",
   };
 
   if (input.data.status === "approved") {

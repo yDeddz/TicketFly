@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarDays, MapPin, QrCode, Ticket as TicketIcon } from "lucide-react";
 
 import { Badge, type BadgeVariant } from "@/components/badge";
+import { DownloadTicketButton } from "@/components/download-ticket-button";
 import { WalletButton } from "@/components/wallet-button";
 import type { WalletTicket } from "@/lib/ticketfly-data";
 
@@ -77,7 +78,10 @@ export function TicketCard({ ticket }: { ticket: WalletTicket }) {
                 Abrir ingresso
               </Link>
               {ticket.qrReady ? (
-                <WalletButton code={ticket.code} accessToken={ticket.accessToken} label="Adicionar à Wallet" />
+                <>
+                  <DownloadTicketButton code={ticket.code} accessToken={ticket.accessToken} />
+                  <WalletButton code={ticket.code} accessToken={ticket.accessToken} label="Adicionar à Wallet" />
+                </>
               ) : null}
             </div>
           </div>

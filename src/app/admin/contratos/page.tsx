@@ -8,7 +8,7 @@ export default async function AdminContractsPage() {
   const { data: organizers } = await admin
     .from("organizers")
     .select(
-      "id,trade_name,legal_name,document,phone,city,status,fee_threshold_cents,fee_percent_upto_threshold,fee_percent_above_threshold,service_fee_platform_share_percent,mp_connection_status,partnership_notes,created_at",
+      "id,trade_name,legal_name,document,phone,city,status,fee_threshold_cents,fee_percent_upto_threshold,fee_percent_above_threshold,service_fee_platform_share_percent,mp_connection_status,pagarme_recipient_id,pagarme_connection_status,partnership_notes,created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -21,6 +21,8 @@ export default async function AdminContractsPage() {
         fee_percent_above_threshold: Number(organizer.fee_percent_above_threshold ?? 9),
         service_fee_platform_share_percent: Number(organizer.service_fee_platform_share_percent ?? 50),
         mp_connection_status: organizer.mp_connection_status ?? "disconnected",
+        pagarme_recipient_id: organizer.pagarme_recipient_id ?? null,
+        pagarme_connection_status: organizer.pagarme_connection_status ?? "disconnected",
         partnership_notes: organizer.partnership_notes ?? null,
       }))}
     />

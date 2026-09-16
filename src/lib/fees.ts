@@ -23,7 +23,7 @@ export type FeeShareSplit = {
 export const DEFAULT_FEE_CONTRACT: FeeContract = {
   fee_threshold_cents: 12_000,
   fee_percent_upto_threshold: 12,
-  fee_percent_above_threshold: 9,
+  fee_percent_above_threshold: 12,
   service_fee_platform_share_percent: 50,
 };
 

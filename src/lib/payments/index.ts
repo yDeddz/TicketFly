@@ -1,6 +1,8 @@
 import { hasAsaasConfig } from "@/lib/payments/asaas-client";
 import { asaasProvider } from "@/lib/payments/providers/asaas";
 import { mercadoPagoProvider } from "@/lib/payments/providers/mercado-pago";
+import { pagarmeProvider } from "@/lib/payments/providers/pagarme";
+import { hasPagarmeConfig } from "@/lib/payments/pagarme-client";
 import type {
   CreateCheckoutInput,
   CreateCheckoutResult,
@@ -11,16 +13,15 @@ import type {
 
 export type { CreateCheckoutInput, CreateCheckoutResult, OrganizerPaymentConnection, PaymentProviderName };
 export { hasAsaasConfig };
+export { hasPagarmeConfig };
+export { organizerReceivingReady } from "@/lib/organizer-profile";
 
 export function getPaymentProvider(name: PaymentProviderName): PaymentProvider {
   if (name === "asaas") return asaasProvider;
+  if (name === "pagarme") return pagarmeProvider;
   return mercadoPagoProvider;
 }
 
-/**
- * Organizer picks one primary provider (model A).
- * If that provider is not connected, fall back to Mercado Pago (Connect when available, else platform).
- */
 export function resolveCheckoutProvider(
   organizer: OrganizerPaymentConnection | null | undefined,
 ): {
@@ -28,49 +29,27 @@ export function resolveCheckoutProvider(
   useMpConnect: boolean;
   mpAccessToken: string | null;
   asaasWalletId: string | null;
+  pagarmeRecipientId: string | null;
 } {
-  const asaasReady =
-    organizer?.asaas_connection_status === "connected" && Boolean(organizer.asaas_wallet_id);
-
-  const mpReady =
-    organizer?.mp_connection_status === "connected" && Boolean(organizer.mp_access_token);
-
-  const primary = organizer?.primary_payment_provider === "asaas" ? "asaas" : "mercado_pago";
-
-  if (primary === "asaas" && asaasReady) {
-    return {
-      provider: "asaas",
-      useMpConnect: false,
-      mpAccessToken: null,
-      asaasWalletId: organizer!.asaas_wallet_id!,
-    };
-  }
-
-  if (mpReady) {
-    return {
-      provider: "mercado_pago",
-      useMpConnect: true,
-      mpAccessToken: organizer!.mp_access_token!,
-      asaasWalletId: null,
-    };
-  }
-
-  // Platform Mercado Pago fallback (no Connect).
   return {
-    provider: "mercado_pago",
+    provider: "pagarme",
     useMpConnect: false,
     mpAccessToken: null,
     asaasWalletId: null,
+    pagarmeRecipientId:
+      organizer?.pagarme_connection_status === "connected"
+        ? organizer.pagarme_recipient_id ?? null
+        : null,
   };
 }
 
 export function checkoutProviderLabel(provider: PaymentProviderName) {
-  return provider === "asaas" ? "Pix ou cartão" : "checkout seguro";
+  return provider === "pagarme" || provider === "asaas" ? "Pix ou cartão" : "checkout seguro";
 }
 
 export async function createProviderCheckout(
   organizer: OrganizerPaymentConnection | null | undefined,
-  input: Omit<CreateCheckoutInput, "mpAccessToken" | "useMpConnect" | "asaasWalletId">,
+  input: Omit<CreateCheckoutInput, "mpAccessToken" | "useMpConnect" | "asaasWalletId" | "pagarmeRecipientId">,
 ): Promise<CreateCheckoutResult> {
   const resolved = resolveCheckoutProvider(organizer);
   const provider = getPaymentProvider(resolved.provider);
@@ -80,6 +59,7 @@ export async function createProviderCheckout(
     useMpConnect: resolved.useMpConnect,
     mpAccessToken: resolved.mpAccessToken,
     asaasWalletId: resolved.asaasWalletId,
+    pagarmeRecipientId: resolved.pagarmeRecipientId,
   });
 }
 
@@ -87,6 +67,7 @@ export async function refundViaProvider(
   providerName: string | null | undefined,
   providerPaymentId: string,
 ): Promise<boolean> {
-  const name: PaymentProviderName = providerName === "asaas" ? "asaas" : "mercado_pago";
+  const name: PaymentProviderName =
+    providerName === "asaas" || providerName === "pagarme" ? providerName : "mercado_pago";
   return getPaymentProvider(name).refund(providerPaymentId);
 }

@@ -32,6 +32,7 @@ export function CheckoutForm({
   initialBuyerName = "",
   initialBuyerEmail = "",
   paymentProvider = "mercado_pago",
+  loggedIn = false,
 }: {
   batches: TicketBatch[];
   demoMode?: boolean;
@@ -41,6 +42,7 @@ export function CheckoutForm({
   initialBuyerName?: string;
   initialBuyerEmail?: string;
   paymentProvider?: PaymentProviderName;
+  loggedIn?: boolean;
 }) {
   const [batchId, setBatchId] = useState(batches[0]?.id ?? "");
   const [buyerName, setBuyerName] = useState(initialBuyerName);
@@ -176,6 +178,9 @@ export function CheckoutForm({
         <h2 className="mt-1 text-2xl font-black">Escolha seu ingresso</h2>
         <p className="mt-2 text-sm text-white/56">
           Informe seus dados, escolha o lote e pague com {providerHint}.
+          {loggedIn
+            ? " O QR vai para Meus Ingressos no seu perfil."
+            : " Use o e-mail da sua conta para o ingresso aparecer no perfil."}
         </p>
       </div>
 

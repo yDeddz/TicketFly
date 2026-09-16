@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
-
+import { apiError, apiOk, createRequestId } from "@/lib/api-error";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { organizerApplySchema } from "@/lib/validators";
 
 export async function POST(request: Request) {
-  const input = organizerApplySchema.safeParse(await request.json());
+  const requestId = createRequestId(request);
+  const input = organizerApplySchema.safeParse(await request.json().catch(() => null));
 
   if (!input.success) {
-    return NextResponse.json({ error: "Dados da balada inválidos" }, { status: 400 });
+    return apiError(400, { message: "Dados da balada inválidos", code: "VALIDATION_ERROR", requestId });
   }
 
   const supabase = await createSupabaseServerClient();
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Faça login para se candidatar" }, { status: 401 });
+    return apiError(401, { message: "Faça login para se candidatar", code: "UNAUTHENTICATED", requestId });
   }
 
   const admin = createAdminClient();
@@ -28,7 +28,11 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existing) {
-    return NextResponse.json({ error: "Você já possui uma candidatura de parceiro" }, { status: 409 });
+    return apiError(409, {
+      message: "Você já possui uma candidatura de parceiro",
+      code: "ALREADY_APPLIED",
+      requestId,
+    });
   }
 
   const { data, error } = await admin
@@ -47,10 +51,22 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: "Erro ao criar candidatura" }, { status: 500 });
+    if (error?.code === "23505") {
+      return apiError(409, {
+        message: "Este CPF/CNPJ já está cadastrado",
+        code: "DOCUMENT_TAKEN",
+        requestId,
+      });
+    }
+    return apiError(500, {
+      message: "Erro ao criar candidatura",
+      code: "APPLY_FAILED",
+      requestId,
+      cause: error?.message,
+    });
   }
 
   await admin.from("users").update({ role: "organizer" }).eq("id", user.id).neq("role", "admin");
 
-  return NextResponse.json({ ok: true, organizerId: data.id, status: data.status });
+  return apiOk({ ok: true, organizerId: data.id, status: data.status }, { requestId });
 }

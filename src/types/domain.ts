@@ -17,6 +17,7 @@ export type OrganizerSummary = {
   mp_connection_status?: MpConnectionStatus;
   asaas_connection_status?: MpConnectionStatus;
   asaas_wallet_id?: string | null;
+  pagarme_connection_status?: MpConnectionStatus;
   primary_payment_provider?: string | null;
   webhook_enabled?: boolean;
 };

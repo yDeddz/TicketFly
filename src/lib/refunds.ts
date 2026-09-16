@@ -8,6 +8,9 @@ function hasRealMercadoPagoToken() {
 }
 
 function canAttemptProviderRefund(provider: string | null | undefined) {
+  if (provider === "pagarme") {
+    return (process.env.PAGARME_SECRET_KEY ?? "").startsWith("sk_");
+  }
   if (provider === "asaas") {
     const key = process.env.ASAAS_API_KEY ?? "";
     return Boolean(key) && !key.includes("your-");

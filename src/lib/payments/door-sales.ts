@@ -1,13 +1,8 @@
 import { appUrl } from "@/lib/env";
 import {
-  AsaasRequestError,
-  asaasCreatePayment,
-  asaasDueDate,
-  asaasFindOrCreateCustomer,
-  asaasFindPaymentByExternalReference,
-  asaasGetPixQrCode,
-  type AsaasPixQrCode,
-} from "@/lib/payments/asaas-client";
+  pagarmeCreateCheckout,
+  PagarmeRequestError,
+} from "@/lib/payments/pagarme-client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signDoorPaymentAccessToken } from "@/lib/ticket-crypto";
 
@@ -15,7 +10,7 @@ export type DoorPaymentMethod = "pix" | "credit_card";
 
 export type DoorSaleInput = {
   organizerId: string;
-  asaasWalletId: string;
+  pagarmeRecipientId: string;
   operatorUserId: string;
   batchId: string;
   buyerName: string;
@@ -90,7 +85,7 @@ async function compensateRejectedProviderRequest(paymentId: string, reason: stri
   });
   if (error) {
     throw new DoorSaleError(
-      "O Asaas recusou os dados e a reserva não pôde ser liberada. Tente de novo.",
+      "A Pagar.me recusou os dados e a reserva não pôde ser liberada. Tente de novo.",
       503,
       "DOOR_SALE_COMPENSATE_FAILED",
     );
@@ -122,7 +117,7 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
 
   const { data: localPayment } = await admin
     .from("payments")
-    .select("status,provider_payment_id,checkout_url,payment_method")
+    .select("status,provider_preference_id,provider_payment_id,checkout_url,payment_method")
     .eq("id", reservation.payment_id)
     .single();
 
@@ -136,60 +131,44 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
       status: localPayment.status,
       buyerUrl,
       checkoutUrl: localPayment.checkout_url,
-      pix: null as AsaasPixQrCode | null,
+      pix: null,
     };
   }
 
+  let providerPreferenceId = localPayment.provider_preference_id;
   let providerPaymentId = localPayment.provider_payment_id;
   let checkoutUrl = localPayment.checkout_url;
 
   try {
-    if (!providerPaymentId) {
-      const recovered = await asaasFindPaymentByExternalReference(reservation.payment_id);
-      if (recovered?.id) {
-        providerPaymentId = recovered.id;
-        checkoutUrl = recovered.invoiceUrl ?? checkoutUrl;
-      }
-    }
-
-    if (!providerPaymentId) {
-      const customer = await asaasFindOrCreateCustomer({
-        name: input.buyerName,
-        email: input.buyerEmail,
-        cpfCnpj: input.buyerCpf,
-        mobilePhone: input.buyerPhone,
-      });
-
-      const payment = await asaasCreatePayment({
-        customer: customer.id,
-        billingType: input.paymentMethod === "pix" ? "PIX" : "CREDIT_CARD",
-        value: Number((reservation.amount_cents / 100).toFixed(2)),
-        dueDate: asaasDueDate(1),
-        description: `${reservation.event_title} · ${reservation.batch_name}`.slice(0, 500),
-        externalReference: reservation.payment_id,
-        callback: {
-          successUrl: buyerUrl,
-          autoRedirect: true,
+    if (!providerPreferenceId || !checkoutUrl) {
+      const checkout = await pagarmeCreateCheckout({
+        paymentId: reservation.payment_id,
+        ticketId: reservation.ticket_id,
+        eventTitle: `${reservation.event_title} · ${reservation.batch_name}`,
+        amountCents: reservation.amount_cents,
+        organizerAmountCents: reservation.net_amount_cents,
+        organizerRecipientId: input.pagarmeRecipientId,
+        buyerName: input.buyerName,
+        buyerEmail: input.buyerEmail,
+        statusUrl: buyerUrl,
+        metadata: {
+          payment_id: reservation.payment_id,
+          ticket_id: reservation.ticket_id,
+          source: "door_sale",
+          buyer_cpf: input.buyerCpf,
+          buyer_phone: input.buyerPhone,
         },
-        split: [
-          {
-            walletId: input.asaasWalletId,
-            fixedValue: Number((reservation.net_amount_cents / 100).toFixed(2)),
-            description: "Repasse organizador Ticket Fly",
-            externalReference: reservation.payment_id,
-          },
-        ],
       });
-
-      providerPaymentId = payment.id;
-      checkoutUrl = payment.invoiceUrl ?? null;
+      providerPreferenceId = checkout.order.id;
+      providerPaymentId = checkout.order.charges?.[0]?.id ?? null;
+      checkoutUrl = checkout.checkoutUrl;
     }
 
     await admin
       .from("payments")
       .update({
-        provider: "asaas",
-        provider_preference_id: providerPaymentId,
+        provider: "pagarme",
+        provider_preference_id: providerPreferenceId,
         provider_payment_id: providerPaymentId,
         checkout_url: checkoutUrl,
         raw_payload: {
@@ -202,39 +181,34 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
       .eq("status", "pending");
 
     if (!checkoutUrl) {
-      throw new DoorSaleError("Asaas não retornou o link de pagamento", 502, "ASAAS_LINK_MISSING");
+      throw new DoorSaleError("Pagar.me não retornou o link de pagamento", 502, "PAGARME_LINK_MISSING");
     }
-
-    const pix =
-      input.paymentMethod === "pix"
-        ? await asaasGetPixQrCode(providerPaymentId)
-        : null;
 
     return {
       ...reservation,
       status: "pending",
       buyerUrl,
       checkoutUrl,
-      pix,
+      pix: null,
     };
   } catch (cause) {
     if (cause instanceof DoorSaleError) throw cause;
 
-    if (cause instanceof AsaasRequestError && cause.status >= 400 && cause.status < 500) {
-      if (!providerPaymentId) {
+    if (cause instanceof PagarmeRequestError && cause.status >= 400 && cause.status < 500) {
+      if (!providerPreferenceId) {
         await compensateRejectedProviderRequest(reservation.payment_id, cause.message);
         throw new DoorSaleError(
-          "O Asaas recusou os dados da cobrança. Confira CPF, celular e conexão da conta.",
+          "A Pagar.me recusou os dados da cobrança. Confira os dados do comprador.",
           422,
-          "ASAAS_REJECTED",
+          "PAGARME_REJECTED",
         );
       }
     }
 
     throw new DoorSaleError(
-      "O Asaas demorou para responder. Tente novamente com a mesma venda.",
+      "A Pagar.me demorou para responder. Tente novamente com a mesma venda.",
       503,
-      "ASAAS_TEMPORARY_FAILURE",
+      "PAGARME_TEMPORARY_FAILURE",
     );
   }
 }

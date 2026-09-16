@@ -30,10 +30,13 @@ export type AsaasPixQrCode = {
 
 export type AsaasSubaccount = {
   id: string;
-  walletId: string;
+  walletId?: string;
   apiKey?: string;
   name?: string;
   email?: string;
+  cpfCnpj?: string;
+  accountStatus?: string;
+  status?: string;
 };
 
 export type AsaasWebhookPayload = {
@@ -178,6 +181,36 @@ export async function asaasCreateSubaccount(body: Record<string, unknown>): Prom
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export async function asaasFindAccountByCpfCnpj(cpfCnpj: string): Promise<AsaasSubaccount | null> {
+  const response = await asaasFetch<{ data?: AsaasSubaccount[] }>(
+    `/v3/accounts?cpfCnpj=${encodeURIComponent(cpfCnpj)}&limit=1`,
+  );
+  return response.data?.[0] ?? null;
+}
+
+export async function asaasGetAccount(accountId: string): Promise<AsaasSubaccount> {
+  return asaasFetch<AsaasSubaccount>(`/v3/accounts/${encodeURIComponent(accountId)}`);
+}
+
+export function asaasAccountStatus(account: AsaasSubaccount) {
+  return account.accountStatus || account.status || (account.walletId ? "ACTIVE" : "PENDING");
+}
+
+export function asaasConnectPublicMessage(error: unknown) {
+  if (error instanceof AsaasRequestError) {
+    if (error.status === 400 || error.status === 422) {
+      return "O Asaas recusou os dados. Confira CPF/CNPJ, endereço, CEP e telefone no perfil.";
+    }
+    if (error.status === 401 || error.status === 403) {
+      return "Asaas não autorizado no servidor. Fale com o suporte TicketFly.";
+    }
+    if (error.status === 409) {
+      return "Já existe uma conta Asaas com estes dados. Tente sincronizar o status.";
+    }
+  }
+  return "Não foi possível conectar o Asaas. Tente de novo em instantes.";
 }
 
 export function verifyAsaasWebhookToken(headerToken: string | null) {

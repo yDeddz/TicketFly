@@ -1,46 +1,62 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-
-import { requireApprovedOrganizer } from "@/lib/auth-guards";
+import { apiError, apiOk, createRequestId } from "@/lib/api-error";
+import { organizerAuthError, requireApprovedOrganizer } from "@/lib/auth-guards";
+import { organizerReceivingReady } from "@/lib/organizer-profile";
 import { notifyEventWebhook } from "@/lib/organizer-webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const updateSchema = z.object({
-  status: z.enum(["draft", "published", "cancelled", "finished"]).optional(),
-  title: z.string().trim().min(3).max(120).optional(),
-  description: z.string().trim().max(3000).optional().or(z.literal("")),
-});
+import { organizerEventUpdateSchema } from "@/lib/validators";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const requestId = createRequestId(request);
   const auth = await requireApprovedOrganizer();
-  if (auth.error || !auth.user || (!auth.organizer && !auth.isAdmin)) {
-    return NextResponse.json({ error: auth.error ?? "Sem permissão" }, { status: auth.status === 200 ? 403 : auth.status });
-  }
+  const denied = organizerAuthError(auth, { allowAdminWithoutOrganizer: true });
+  if (denied) return denied;
 
   const { id } = await context.params;
-  const input = updateSchema.safeParse(await request.json());
+  const input = organizerEventUpdateSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) {
-    return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+    return apiError(400, { message: "Dados inválidos", code: "VALIDATION_ERROR", requestId });
   }
 
   const admin = createAdminClient();
-  const { data: event } = await admin.from("events").select("id,organizer_id,status").eq("id", id).single();
+  const { data: event } = await admin
+    .from("events")
+    .select("id,organizer_id,status,starts_at,ends_at")
+    .eq("id", id)
+    .single();
 
   if (!event || (!auth.isAdmin && event.organizer_id !== auth.organizer?.id)) {
-    return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+    return apiError(404, { message: "Evento não encontrado", code: "EVENT_NOT_FOUND", requestId });
+  }
+
+  if (input.data.startsAt && input.data.endsAt === undefined && event.ends_at) {
+    if (new Date(event.ends_at).getTime() <= new Date(input.data.startsAt).getTime()) {
+      return apiError(400, {
+        message: "A data de término precisa ser posterior ao início",
+        code: "VALIDATION_ERROR",
+        requestId,
+      });
+    }
   }
 
   if (input.data.status === "published") {
+    if (auth.organizer && !auth.isAdmin && !organizerReceivingReady(auth.organizer)) {
+      return apiError(409, {
+        message: "Conecte Asaas ou Mercado Pago antes de publicar",
+        code: "PAYMENTS_NOT_READY",
+        requestId,
+      });
+    }
     const { count } = await admin
       .from("ticket_batches")
       .select("id", { count: "exact", head: true })
       .eq("event_id", id)
       .eq("is_active", true);
     if (!count) {
-      return NextResponse.json(
-        { error: "Adicione pelo menos um lote ativo antes de publicar" },
-        { status: 409 },
-      );
+      return apiError(409, {
+        message: "Adicione pelo menos um lote ativo antes de publicar",
+        code: "BATCH_REQUIRED",
+        requestId,
+      });
     }
   }
 
@@ -50,10 +66,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (input.data.status) patch.status = input.data.status;
   if (input.data.title) patch.title = input.data.title;
   if (input.data.description !== undefined) patch.description = input.data.description || null;
+  if (input.data.venueName) patch.venue_name = input.data.venueName;
+  if (input.data.address) patch.address = input.data.address;
+  if (input.data.city) patch.city = input.data.city;
+  if (input.data.startsAt) patch.starts_at = input.data.startsAt;
+  if (input.data.endsAt !== undefined) patch.ends_at = input.data.endsAt || null;
+  if (input.data.coverImageUrl !== undefined) patch.cover_image_url = input.data.coverImageUrl || null;
 
   const { error } = await admin.from("events").update(patch).eq("id", id);
   if (error) {
-    return NextResponse.json({ error: "Erro ao atualizar evento" }, { status: 500 });
+    return apiError(500, { message: "Erro ao atualizar evento", code: "EVENT_UPDATE_FAILED", requestId, cause: error.message });
   }
 
   if (input.data.status === "published" && event.status !== "published") {
@@ -64,5 +86,5 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     await notifyEventWebhook(id, "event.updated");
   }
 
-  return NextResponse.json({ ok: true });
+  return apiOk({ ok: true }, { requestId });
 }

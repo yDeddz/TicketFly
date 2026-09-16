@@ -1,44 +1,31 @@
-import { NextResponse } from "next/server";
-
+import { apiError, apiOk, createRequestId } from "@/lib/api-error";
+import { organizerAuthError, requireApprovedOrganizer } from "@/lib/auth-guards";
 import { slugify } from "@/lib/format";
+import { organizerReceivingReady } from "@/lib/organizer-profile";
 import { notifyEventWebhook } from "@/lib/organizer-webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { eventSchema } from "@/lib/validators";
 
 export async function POST(request: Request) {
-  const input = eventSchema.safeParse(await request.json());
+  const requestId = createRequestId(request);
+  const auth = await requireApprovedOrganizer();
+  const denied = organizerAuthError(auth);
+  if (denied) return denied;
+  if (!auth.organizer) {
+    return apiError(403, { message: "Organizador não aprovado", code: "ORGANIZER_FORBIDDEN", requestId });
+  }
 
+  const input = eventSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) {
-    return NextResponse.json({ error: "Dados do evento inválidos" }, { status: 400 });
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Login obrigatório" }, { status: 401 });
-  }
-
-  const admin = createAdminClient();
-  const { data: organizer } = await admin
-    .from("organizers")
-    .select("id,status")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!organizer || organizer.status !== "approved") {
-    return NextResponse.json({ error: "Organizador não aprovado" }, { status: 403 });
+    return apiError(400, { message: "Dados do evento inválidos", code: "VALIDATION_ERROR", requestId });
   }
 
   const slug = `${slugify(input.data.title)}-${crypto.randomUUID().slice(0, 8)}`;
-
+  const admin = createAdminClient();
   const { data, error } = await admin
     .from("events")
     .insert({
-      organizer_id: organizer.id,
+      organizer_id: auth.organizer.id,
       title: input.data.title,
       slug,
       description: input.data.description || null,
@@ -54,10 +41,33 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: "Erro ao criar evento" }, { status: 500 });
+    return apiError(500, {
+      message: "Erro ao criar evento",
+      code: "EVENT_CREATE_FAILED",
+      requestId,
+      cause: error?.message,
+    });
+  }
+
+  if (input.data.batch) {
+    const { error: batchError } = await admin.from("ticket_batches").insert({
+      event_id: data.id,
+      name: input.data.batch.name,
+      price_cents: input.data.batch.priceCents,
+      quantity_total: input.data.batch.quantityTotal,
+    });
+    if (batchError) {
+      return apiOk(
+        {
+          id: data.id,
+          slug: data.slug,
+          batchWarning: "Evento criado, mas o lote não foi salvo. Adicione o lote em seguida.",
+        },
+        { requestId },
+      );
+    }
   }
 
   await notifyEventWebhook(data.id, "event.created");
-
-  return NextResponse.json(data);
+  return apiOk({ id: data.id, slug: data.slug }, { requestId });
 }

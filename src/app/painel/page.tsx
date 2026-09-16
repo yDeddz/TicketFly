@@ -13,6 +13,7 @@ import { formatCurrency } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signTicketAccessToken } from "@/lib/ticket-crypto";
+import { claimTicketsForBuyer } from "@/lib/tickets/claim";
 import {
   paymentMethods,
   showcaseEvents,
@@ -48,6 +49,10 @@ export default async function MyTicketsPage() {
   const admin = createAdminClient();
   const email = user.email?.toLowerCase() ?? "";
 
+  if (email) {
+    await claimTicketsForBuyer({ userId: user.id, email });
+  }
+
   let query = admin
     .from("tickets")
     .select(
@@ -57,15 +62,16 @@ export default async function MyTicketsPage() {
     .order("created_at", { ascending: false })
     .limit(40);
 
-  if (user.id && email) {
-    query = query.or(`buyer_user_id.eq.${user.id},buyer_email.eq.${email}`);
+  const safeEmail = email.replaceAll('"', "");
+  if (user.id && safeEmail) {
+    query = query.or(`buyer_user_id.eq.${user.id},buyer_email.eq."${safeEmail}"`);
   } else if (user.id) {
     query = query.eq("buyer_user_id", user.id);
   } else {
-    query = query.eq("buyer_email", email);
+    query = query.eq("buyer_email", safeEmail);
   }
 
-  const { data: rows } = await query;
+  const { data: rows, error: ticketsError } = await query;
 
   const tickets: WalletTicket[] = [];
   const history: PurchaseRecord[] = [];
@@ -190,9 +196,13 @@ export default async function MyTicketsPage() {
           <SectionTitle
             eyebrow="Prontos para uso"
             title="Ingressos ativos"
-            description="QR dinâmico assinado + Wallet. Toque em abrir para a sessão de entrada."
+            description="QR dinâmico, download e Wallet. Toque em abrir se sair da página de compra."
           />
-          {tickets.length === 0 ? (
+          {ticketsError ? (
+            <div className="surface rounded-2xl p-8 text-center">
+              <p className="text-white/70">Não foi possível carregar seus ingressos agora. Atualize a página.</p>
+            </div>
+          ) : tickets.length === 0 ? (
             <div className="surface rounded-2xl p-8 text-center">
               <p className="text-white/70">Você ainda não tem ingressos pagos.</p>
               <Link href="/eventos" className="neon-button btn mt-4 inline-flex h-11 px-5 text-sm">

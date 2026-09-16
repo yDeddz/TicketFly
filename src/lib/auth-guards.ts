@@ -1,3 +1,5 @@
+import { apiError } from "@/lib/api-error";
+import { ORGANIZER_PROFILE_SELECT } from "@/lib/organizer-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -20,7 +22,9 @@ export async function requireAdmin() {
   return { error: null, status: 200 as const, user, profile };
 }
 
-export async function requireApprovedOrganizer() {
+const organizerSelect = ORGANIZER_PROFILE_SELECT;
+
+export async function requireOrganizerAccount(options?: { allowPending?: boolean }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -42,7 +46,7 @@ export async function requireApprovedOrganizer() {
 
   const { data: organizer } = await admin
     .from("organizers")
-    .select("id,status,trade_name,legal_name,fee_threshold_cents,fee_percent_upto_threshold,fee_percent_above_threshold,partnership_notes,city,phone")
+    .select(organizerSelect)
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -54,9 +58,33 @@ export async function requireApprovedOrganizer() {
     return { error: "Organizador não encontrado" as const, status: 404 as const, user, organizer: null, isAdmin };
   }
 
-  if (organizer.status !== "approved" && !isAdmin) {
+  if (organizer.status === "rejected" || organizer.status === "suspended") {
+    return { error: "Organizador bloqueado" as const, status: 403 as const, user, organizer, isAdmin };
+  }
+
+  if (!options?.allowPending && organizer.status !== "approved" && !isAdmin) {
     return { error: "Organizador não aprovado" as const, status: 403 as const, user, organizer, isAdmin };
   }
 
   return { error: null, status: 200 as const, user, organizer, isAdmin };
+}
+
+export async function requireApprovedOrganizer() {
+  return requireOrganizerAccount({ allowPending: false });
+}
+
+export function organizerAuthError(
+  auth: Awaited<ReturnType<typeof requireOrganizerAccount>>,
+  options?: { allowAdminWithoutOrganizer?: boolean },
+) {
+  if (auth.error || !auth.user) {
+    return apiError(auth.status, {
+      message: auth.error ?? "Sem permissão",
+      code: "ORGANIZER_FORBIDDEN",
+    });
+  }
+  if (!auth.organizer && !(options?.allowAdminWithoutOrganizer && auth.isAdmin)) {
+    return apiError(403, { message: "Sem permissão", code: "ORGANIZER_FORBIDDEN" });
+  }
+  return null;
 }

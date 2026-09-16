@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CANONICAL_APP_URL = "https://www.ticketfly.app";
 const OUT_FILE = resolve(ROOT, ".env.vercel.import");
-const ASAAS_VALUE_FILE = resolve(ROOT, ".env.vercel.asaas.value");
 
 const KEYS = [
   "NEXT_PUBLIC_APP_URL",
@@ -14,9 +13,11 @@ const KEYS = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "TICKET_QR_SECRET",
   "CRON_SECRET",
-  "ASAAS_API_KEY",
-  "ASAAS_API_URL",
-  "ASAAS_WEBHOOK_TOKEN",
+  "PAGARME_SECRET_KEY",
+  "PAGARME_ACCOUNT_ID",
+  "PAGARME_PLATFORM_RECIPIENT_ID",
+  "PAGARME_WEBHOOK_SECRET",
+  "PAGARME_API_URL",
 ];
 
 function loadEnvFile(fileName) {
@@ -80,22 +81,15 @@ for (const key of KEYS) {
 
 writeFileSync(OUT_FILE, `${lines.join("\n")}\n`, "utf8");
 
-const asaas = byHand.find((item) => item.key === "ASAAS_API_KEY");
-if (asaas) {
-  writeFileSync(ASAAS_VALUE_FILE, asaas.value, "utf8");
-}
-
 console.log("TicketFly · export env para colar na Vercel");
 console.log(`Paste (sem aspas, sem #, sem $): ${OUT_FILE}`);
 console.log(`Incluidas (${included.length}): ${included.join(", ")}`);
 if (byHand.length) {
   console.log(`Na mao (campo Value, comeca com $): ${byHand.map((item) => item.key).join(", ")}`);
-  if (asaas) console.log(`Valor cru da Asaas: ${ASAAS_VALUE_FILE}`);
 }
 if (skipped.length) {
   console.log(`Puladas: ${skipped.join(", ")}`);
 }
 console.log("\n1. Vercel → Environment Variables → apaga as chaves que ja existem (import nao sobrescreve).");
 console.log("2. Cola o .env.vercel.import → Production → Save.");
-console.log("3. Add ASAAS_API_KEY → cola o conteudo de .env.vercel.asaas.value no Value (nao no Key).");
-console.log("4. Redeploy do deploy Ready.");
+console.log("3. Redeploy do deploy Ready.");

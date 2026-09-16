@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
@@ -23,7 +22,7 @@ export default async function DoorSalesPage() {
   const [{ data: organizer }, { data: events }] = await Promise.all([
     admin
       .from("organizers")
-      .select("asaas_connection_status,asaas_wallet_id")
+      .select("pagarme_connection_status")
       .eq("id", auth.organizer.id)
       .single(),
     admin
@@ -36,9 +35,7 @@ export default async function DoorSalesPage() {
       .order("starts_at", { ascending: true }),
   ]);
 
-  const asaasReady =
-    organizer?.asaas_connection_status === "connected" &&
-    Boolean(organizer.asaas_wallet_id);
+  const pagarmeReady = organizer?.pagarme_connection_status === "connected";
 
   const options: DoorSaleEvent[] = (events ?? [])
     .map((event) => ({
@@ -77,19 +74,13 @@ export default async function DoorSalesPage() {
         </p>
       </div>
 
-      {!asaasReady ? (
+      {!pagarmeReady ? (
         <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5">
-          <h3 className="font-black text-amber-100">Conecte o Asaas para vender na porta</h3>
+          <h3 className="font-black text-amber-100">Recebimento Stone em configuração</h3>
           <p className="mt-2 text-sm text-amber-100/75">
-            O Asaas processa PIX e cartão e repassa automaticamente o valor da venda para sua
-            carteira.
+            A administração TicketFly cadastra o recebedor. Você não precisa acessar ou
+            configurar a Pagar.me.
           </p>
-          <Link
-            href="/organizador/pagamentos"
-            className="mt-4 inline-flex rounded-full bg-[#ff1493] px-4 py-3 text-sm font-bold text-white"
-          >
-            Configurar pagamentos
-          </Link>
         </div>
       ) : (
         <OrganizerDoorSalesManager events={options} />

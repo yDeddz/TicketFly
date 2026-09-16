@@ -4,6 +4,8 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { formatCpfCnpjInput, formatPhoneInput } from "@/lib/format";
+
 export function PartnerApplyForm() {
   const router = useRouter();
   const [tradeName, setTradeName] = useState("");
@@ -84,7 +86,7 @@ export function PartnerApplyForm() {
           <input
             required
             value={document}
-            onChange={(event) => setDocument(event.target.value)}
+            onChange={(event) => setDocument(formatCpfCnpjInput(event.target.value))}
             className="h-12 rounded-xl border border-white/10 bg-[#0d0b10] px-3 outline-none transition duration-200 focus:border-[#ff1493]/70"
             placeholder="00.000.000/0000-00"
           />
@@ -93,7 +95,7 @@ export function PartnerApplyForm() {
           Telefone / WhatsApp
           <input
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={(event) => setPhone(formatPhoneInput(event.target.value))}
             className="h-12 rounded-xl border border-white/10 bg-[#0d0b10] px-3 outline-none transition duration-200 focus:border-[#ff1493]/70"
             placeholder="(11) 99999-9999"
           />

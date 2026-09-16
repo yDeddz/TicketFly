@@ -44,17 +44,17 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: organizer } = await admin
     .from("organizers")
-    .select("id,asaas_wallet_id,asaas_connection_status")
+    .select("id,pagarme_recipient_id,pagarme_connection_status")
     .eq("id", auth.organizer.id)
     .single();
 
   if (
-    !organizer?.asaas_wallet_id ||
-    organizer.asaas_connection_status !== "connected"
+    !organizer?.pagarme_recipient_id ||
+    organizer.pagarme_connection_status !== "connected"
   ) {
     return apiError(409, {
-      message: "Conecte sua conta Asaas antes de usar a Bilheteria na Porta",
-      code: "ASAAS_NOT_CONNECTED",
+      message: "O recebedor Stone ainda não foi configurado pela TicketFly",
+      code: "PAGARME_NOT_CONNECTED",
       requestId,
     });
   }
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   try {
     const result = await createOrResumeDoorSale({
       organizerId: organizer.id,
-      asaasWalletId: organizer.asaas_wallet_id,
+      pagarmeRecipientId: organizer.pagarme_recipient_id,
       operatorUserId: auth.user.id,
       batchId: input.data.batchId,
       buyerName: input.data.buyerName,

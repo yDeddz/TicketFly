@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { paymentClient, verifyMercadoPagoSignature } from "@/lib/mercado-pago";
 import { notifySaleCompleted, notifySaleRefunded } from "@/lib/organizer-webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { attachPaidTicketsToBuyerAccount } from "@/lib/tickets/claim";
 
 type MercadoPagoWebhook = {
   type?: string;
@@ -91,20 +92,8 @@ export async function POST(request: Request) {
     p_payload: providerPayment,
   });
 
-  const payerEmail =
-    typeof providerPayment.payer?.email === "string" ? providerPayment.payer.email.trim() : "";
-  const payerFirst =
-    typeof providerPayment.payer?.first_name === "string" ? providerPayment.payer.first_name.trim() : "";
-  const payerLast =
-    typeof providerPayment.payer?.last_name === "string" ? providerPayment.payer.last_name.trim() : "";
-  const payerName = [payerFirst, payerLast].filter(Boolean).join(" ").trim();
-
-  if (payerEmail || payerName) {
-    const ticketPatch: { buyer_email?: string; buyer_name?: string } = {};
-    if (payerEmail) ticketPatch.buyer_email = payerEmail;
-    if (payerName) ticketPatch.buyer_name = payerName;
-
-    await admin.from("tickets").update(ticketPatch).eq("payment_id", localPaymentId);
+  if (mappedStatus === "approved") {
+    await attachPaidTicketsToBuyerAccount(String(localPaymentId));
   }
 
   if (mappedStatus === "approved" && before?.status !== "approved") {

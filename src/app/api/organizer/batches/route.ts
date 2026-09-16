@@ -1,35 +1,31 @@
-import { NextResponse } from "next/server";
-
+import { apiError, apiOk, createRequestId } from "@/lib/api-error";
+import { organizerAuthError, requireApprovedOrganizer } from "@/lib/auth-guards";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { batchSchema } from "@/lib/validators";
 
 export async function POST(request: Request) {
-  const input = batchSchema.safeParse(await request.json());
-
-  if (!input.success) {
-    return NextResponse.json({ error: "Dados do lote inválidos" }, { status: 400 });
+  const requestId = createRequestId(request);
+  const auth = await requireApprovedOrganizer();
+  const denied = organizerAuthError(auth);
+  if (denied) return denied;
+  if (!auth.organizer) {
+    return apiError(403, { message: "Sem permissão", code: "ORGANIZER_FORBIDDEN", requestId });
   }
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Login obrigatório" }, { status: 401 });
+  const input = batchSchema.safeParse(await request.json().catch(() => null));
+  if (!input.success) {
+    return apiError(400, { message: "Dados do lote inválidos", code: "VALIDATION_ERROR", requestId });
   }
 
   const admin = createAdminClient();
   const { data: event } = await admin
     .from("events")
-    .select("id,organizers(user_id,status)")
+    .select("id,organizer_id")
     .eq("id", input.data.eventId)
     .single();
-  const organizer = Array.isArray(event?.organizers) ? event?.organizers[0] : event?.organizers;
 
-  if (!event || organizer?.user_id !== user.id || organizer.status !== "approved") {
-    return NextResponse.json({ error: "Sem permissão neste evento" }, { status: 403 });
+  if (!event || event.organizer_id !== auth.organizer.id) {
+    return apiError(403, { message: "Sem permissão neste evento", code: "EVENT_FORBIDDEN", requestId });
   }
 
   const { data, error } = await admin
@@ -47,8 +43,8 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: "Erro ao criar lote" }, { status: 500 });
+    return apiError(500, { message: "Erro ao criar lote", code: "BATCH_CREATE_FAILED", requestId, cause: error?.message });
   }
 
-  return NextResponse.json(data);
+  return apiOk(data, { requestId });
 }

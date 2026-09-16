@@ -1,4 +1,4 @@
-export type PaymentProviderName = "mercado_pago" | "asaas";
+export type PaymentProviderName = "mercado_pago" | "asaas" | "pagarme";
 
 export type LocalPaymentStatus = "pending" | "approved" | "rejected" | "cancelled" | "refunded";
 
@@ -20,6 +20,7 @@ export type CreateCheckoutInput = {
   mpAccessToken?: string | null;
   useMpConnect?: boolean;
   asaasWalletId?: string | null;
+  pagarmeRecipientId?: string | null;
 };
 
 export type CreateCheckoutResult = {
@@ -41,4 +42,6 @@ export type OrganizerPaymentConnection = {
   mp_connection_status: string | null;
   asaas_wallet_id: string | null;
   asaas_connection_status: string | null;
+  pagarme_recipient_id?: string | null;
+  pagarme_connection_status?: string | null;
 };

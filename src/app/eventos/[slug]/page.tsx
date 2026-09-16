@@ -32,7 +32,7 @@ export default async function EventPage({
       supabase
         .from("events")
         .select(
-          "*, organizers(trade_name, fee_threshold_cents, fee_percent_upto_threshold, fee_percent_above_threshold, service_fee_platform_share_percent, mp_connection_status, asaas_connection_status, asaas_wallet_id, primary_payment_provider), ticket_batches(*)",
+          "*, organizers(trade_name, fee_threshold_cents, fee_percent_upto_threshold, fee_percent_above_threshold, service_fee_platform_share_percent, pagarme_connection_status, primary_payment_provider), ticket_batches(*)",
         )
         .eq("slug", slug)
         .single(),
@@ -79,8 +79,10 @@ export default async function EventPage({
     primary_payment_provider: event.organizers?.primary_payment_provider ?? null,
     mp_access_token: null,
     mp_connection_status: event.organizers?.mp_connection_status ?? null,
-    asaas_wallet_id: event.organizers?.asaas_wallet_id ?? null,
-    asaas_connection_status: event.organizers?.asaas_connection_status ?? null,
+    asaas_wallet_id: null,
+    asaas_connection_status: null,
+    pagarme_recipient_id: null,
+    pagarme_connection_status: event.organizers?.pagarme_connection_status ?? null,
   }).provider;
 
   return (
@@ -149,6 +151,7 @@ export default async function EventPage({
           initialBuyerName={buyerName}
           initialBuyerEmail={buyerEmail}
           paymentProvider={paymentProvider}
+          loggedIn={Boolean(buyerEmail)}
         />
       </section>
     </main>

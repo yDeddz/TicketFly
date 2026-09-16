@@ -2,11 +2,14 @@ import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { OrganizerProfileForm } from "@/components/organizer-profile-form";
+import { ORGANIZER_PROFILE_SELECT, isOrganizerProfileComplete, organizerReceivingReady } from "@/lib/organizer-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const nav = [
   { href: "/organizador", label: "Dashboard" },
+  { href: "/organizador/perfil", label: "Perfil" },
   { href: "/organizador/eventos", label: "Eventos" },
   { href: "/organizador/promotores", label: "Promotores" },
   { href: "/organizador/cupons", label: "Cupons" },
@@ -46,7 +49,7 @@ export default async function OrganizerLayout({ children }: { children: React.Re
   const admin = createAdminClient();
   const { data: organizer } = await admin
     .from("organizers")
-    .select("id,status,trade_name,mp_connection_status,asaas_connection_status,asaas_wallet_id")
+    .select(ORGANIZER_PROFILE_SELECT)
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -66,21 +69,21 @@ export default async function OrganizerLayout({ children }: { children: React.Re
 
   if (organizer.status !== "approved") {
     return (
-      <main className="mx-auto max-w-xl px-4 pb-12 pt-8">
-        <div className="rounded-2xl border border-amber-400/25 bg-[#120410] p-6">
+      <main className="mx-auto max-w-3xl px-4 pb-12 pt-8">
+        <div className="mb-6 rounded-2xl border border-amber-400/25 bg-[#120410] p-6">
           <h1 className="text-2xl font-black">{organizer.trade_name}</h1>
           <p className="mt-2 text-amber-100/90">
-            Status: <strong>{organizer.status}</strong>. O dashboard libera quando a TicketFly aprovar o contrato em
-            /admin/contratos.
+            Status: <strong>{organizer.status === "pending" ? "aguardando aprovação" : organizer.status}</strong>. O dashboard
+            completo libera quando a TicketFly aprovar o contrato.
           </p>
         </div>
+        {organizer.status === "pending" ? <OrganizerProfileForm organizer={organizer} /> : null}
       </main>
     );
   }
 
-  const paymentsReady =
-    organizer.mp_connection_status === "connected" ||
-    (organizer.asaas_connection_status === "connected" && Boolean(organizer.asaas_wallet_id));
+  const paymentsReady = organizerReceivingReady(organizer);
+  const profileComplete = isOrganizerProfileComplete(organizer);
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-8 lg:px-6">
@@ -92,13 +95,18 @@ export default async function OrganizerLayout({ children }: { children: React.Re
         <h1 className="mt-2 text-3xl font-black md:text-4xl">{organizer.trade_name}</h1>
         <p className="mt-2 text-sm text-white/55">Vendas, porta, QR Code e reembolsos com visão operacional.</p>
       </div>
-      {!paymentsReady ? (
+      {!profileComplete ? (
         <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          Nenhum provedor conectado. Em{" "}
-          <Link href="/organizador/pagamentos" className="font-bold underline">
-            Pagamentos
+          Perfil fiscal incompleto. Em{" "}
+          <Link href="/organizador/perfil" className="font-bold underline">
+            Perfil
           </Link>{" "}
-          conecte Asaas (porta + split) ou Mercado Pago. Sem isso a venda online cai na conta da plataforma.
+          complete documento, endereço e telefone.
+        </p>
+      ) : !paymentsReady ? (
+        <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+          A administração TicketFly ainda está configurando seu recebedor Stone. Você não
+          precisa cadastrar ou conectar nenhuma conta.
         </p>
       ) : null}
       <div className="mb-8">

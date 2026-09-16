@@ -4,6 +4,8 @@ import { Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { DownloadTicketButton } from "@/components/download-ticket-button";
+import { TicketQrLive } from "@/components/ticket-qr-live";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { formatCurrency } from "@/lib/format";
 
@@ -19,12 +21,14 @@ type StatusPayload = {
     | { code: string; status: string; buyer_email: string | null }[]
     | null;
   ticketHref?: string | null;
+  ticketCode?: string | null;
+  ticketAccess?: string | null;
 };
 
 const copy: Record<string, { title: string; body: string; tone: "success" | "warning" | "error" | "info" }> = {
   approved: {
     title: "Pagamento aprovado",
-    body: "Seu ingresso está liberado. Guarde o QR na Wallet ou nesta tela para o dia do evento.",
+    body: "Seu ingresso está liberado. Ele também ficou salvo em Meus Ingressos, no seu perfil.",
     tone: "success",
   },
   pending: {
@@ -58,39 +62,48 @@ export function PaymentStatusClient({
   paymentId,
   initial,
   ticketHref: initialTicketHref,
+  loggedIn = false,
 }: {
   paymentId: string;
   initial: StatusPayload | null;
   ticketHref?: string | null;
+  loggedIn?: boolean;
 }) {
   const [payment, setPayment] = useState<StatusPayload | null>(initial);
-  const [ticketHref, setTicketHref] = useState(initialTicketHref ?? null);
+  const [ticketHref, setTicketHref] = useState(initialTicketHref ?? initial?.ticketHref ?? null);
+  const [ticketCode, setTicketCode] = useState(initial?.ticketCode ?? unwrapTicket(initial?.tickets)?.code ?? null);
+  const [ticketAccess, setTicketAccess] = useState(initial?.ticketAccess ?? null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [pollCount, setPollCount] = useState(0);
   const alive = useRef(true);
 
-  const refresh = useCallback(async (silent = false) => {
-    if (!silent) setRefreshing(true);
-    setError("");
-    try {
-      const response = await fetch(`/api/payments/${paymentId}/status`, { cache: "no-store" });
-      const body = await response.json().catch(() => null);
-      if (!response.ok) {
-        setError(body?.error ?? "Não foi possível atualizar o status");
-        return;
+  const refresh = useCallback(
+    async (silent = false) => {
+      if (!silent) setRefreshing(true);
+      setError("");
+      try {
+        const response = await fetch(`/api/payments/${paymentId}/status`, { cache: "no-store" });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) {
+          setError(body?.error ?? "Não foi possível atualizar o status");
+          return;
+        }
+        setPayment(body);
+        if (body.status === "approved") {
+          if (body.ticketHref) setTicketHref(body.ticketHref);
+          if (body.ticketCode) setTicketCode(body.ticketCode);
+          if (body.ticketAccess) setTicketAccess(body.ticketAccess);
+        }
+        setPollCount((n) => n + 1);
+      } catch {
+        setError("Falha de rede ao consultar o pagamento");
+      } finally {
+        if (!silent) setRefreshing(false);
       }
-      setPayment(body);
-      if (body.status === "approved" && body.ticketHref) {
-        setTicketHref(body.ticketHref);
-      }
-      setPollCount((n) => n + 1);
-    } catch {
-      setError("Falha de rede ao consultar o pagamento");
-    } finally {
-      if (!silent) setRefreshing(false);
-    }
-  }, [paymentId]);
+    },
+    [paymentId],
+  );
 
   useEffect(() => {
     alive.current = true;
@@ -122,6 +135,8 @@ export function PaymentStatusClient({
   const statusCopy = copy[payment.status] ?? copy.pending;
   const ticket = unwrapTicket(payment.tickets);
   const pendingTooLong = payment.status === "pending" && pollCount >= 15;
+  const showTicket = payment.status === "approved" && ticketCode;
+  const ticketPaid = ticket?.status === "paid" || payment.status === "approved";
 
   return (
     <div className="rounded-lg border border-[#ff1493]/30 bg-[#120410] p-6 shadow-sm shadow-[#ff1493]/10">
@@ -146,10 +161,39 @@ export function PaymentStatusClient({
         </AlertBanner>
       ) : null}
 
+      {showTicket && ticketPaid ? (
+        <div className="mt-6 grid gap-4 rounded-xl border border-[#ff1493]/25 bg-black/25 p-4">
+          <TicketQrLive code={ticketCode} accessToken={ticketAccess} initialStatus="paid" />
+          <DownloadTicketButton
+            code={ticketCode}
+            accessToken={ticketAccess}
+            className="w-full [&_button]:w-full [&_button]:justify-center"
+          />
+        </div>
+      ) : null}
+
       <div className="mt-6 flex flex-wrap gap-3">
         {payment.status === "approved" && ticketHref ? (
           <Link className="rounded-md bg-[#ff1493] px-4 py-3 font-bold text-white" href={ticketHref}>
-            Ver ingresso
+            Abrir ingresso
+          </Link>
+        ) : null}
+
+        {payment.status === "approved" ? (
+          <Link
+            className="rounded-md border border-white/15 px-4 py-3 font-bold text-white/85"
+            href="/painel"
+          >
+            Ver no meu perfil
+          </Link>
+        ) : null}
+
+        {payment.status === "approved" && !loggedIn ? (
+          <Link
+            className="rounded-md border border-white/15 px-4 py-3 font-bold text-white/85"
+            href={`/login?next=${encodeURIComponent("/painel")}`}
+          >
+            Entrar para salvar no perfil
           </Link>
         ) : null}
 
@@ -178,9 +222,11 @@ export function PaymentStatusClient({
         ) : null}
       </div>
 
-      {payment.status === "approved" && ticketHref ? (
+      {payment.status === "approved" ? (
         <p className="mt-4 text-xs text-[#c9aabc]">
-          O link do ingresso é assinado e temporário. Guarde o QR na Wallet para o dia do evento.
+          {loggedIn
+            ? "Se sair desta página, abra Meus Ingressos no seu perfil. Você também pode baixar o arquivo do ingresso."
+            : "Entre com o mesmo e-mail da compra para o ingresso aparecer em Meus Ingressos, mesmo se você sair desta página."}
         </p>
       ) : null}
 

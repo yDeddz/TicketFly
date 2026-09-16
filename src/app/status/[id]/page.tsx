@@ -1,6 +1,7 @@
 import { PaymentStatusClient } from "@/components/payment-status-client";
 import { publicTicketUrl } from "@/lib/qrcode";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signTicketAccessToken } from "@/lib/ticket-crypto";
 
 export const dynamic = "force-dynamic";
@@ -8,22 +9,27 @@ export const dynamic = "force-dynamic";
 export default async function PaymentStatusPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const admin = createAdminClient();
-  const { data: payment } = await admin
-    .from("payments")
-    .select("id,status,amount_cents,checkout_url,tickets(code,status,buyer_email)")
-    .eq("id", id)
-    .single();
+  const supabase = await createSupabaseServerClient();
+  const [{ data: payment }, auth] = await Promise.all([
+    admin
+      .from("payments")
+      .select("id,status,amount_cents,checkout_url,tickets(code,status,buyer_email)")
+      .eq("id", id)
+      .single(),
+    supabase.auth.getUser(),
+  ]);
 
   const ticket = Array.isArray(payment?.tickets) ? payment?.tickets[0] : payment?.tickets;
 
   let ticketHref: string | null = null;
+  let ticketAccess: string | null = null;
   if (payment?.status === "approved" && ticket?.code && ticket.buyer_email) {
     try {
-      const access = await signTicketAccessToken({
+      ticketAccess = await signTicketAccessToken({
         code: ticket.code,
         buyerEmail: ticket.buyer_email,
       });
-      ticketHref = publicTicketUrl(ticket.code, access);
+      ticketHref = publicTicketUrl(ticket.code, ticketAccess);
     } catch {
       ticketHref = publicTicketUrl(ticket.code);
     }
@@ -41,10 +47,13 @@ export default async function PaymentStatusPage({ params }: { params: Promise<{ 
                 amount_cents: payment.amount_cents,
                 checkout_url: payment.checkout_url,
                 tickets: payment.tickets,
+                ticketCode: ticket?.code ?? null,
+                ticketAccess,
               }
             : null
         }
         ticketHref={ticketHref}
+        loggedIn={Boolean(auth.data.user)}
       />
     </main>
   );

@@ -15,10 +15,10 @@ describe("computeServiceFee", () => {
     expect(fee.totalCents).toBe(11_200);
   });
 
-  it("applies 9% above the threshold", () => {
+  it("applies 12% above the threshold", () => {
     const fee = computeServiceFee(20_000, DEFAULT_FEE_CONTRACT);
-    expect(fee.feePercent).toBe(9);
-    expect(fee.feeCents).toBe(1_800);
+    expect(fee.feePercent).toBe(12);
+    expect(fee.feeCents).toBe(2_400);
   });
 });
 

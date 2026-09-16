@@ -11,6 +11,7 @@ import {
 import { createProviderCheckout, resolveCheckoutProvider } from "@/lib/payments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { attachPaidTicketsToBuyerAccount, resolveBuyerUserId } from "@/lib/tickets/claim";
 import { checkoutSchema } from "@/lib/validators";
 
 type Reservation = {
@@ -34,6 +35,8 @@ type OrganizerPayConfig = {
   mp_connection_status: string | null;
   asaas_wallet_id: string | null;
   asaas_connection_status: string | null;
+  pagarme_recipient_id: string | null;
+  pagarme_connection_status: string | null;
 };
 
 type ClaimedCoupon = {
@@ -64,6 +67,10 @@ export async function POST(request: Request) {
 
   const buyerName = input.data.buyerName.trim();
   const buyerEmail = input.data.buyerEmail.trim().toLowerCase();
+  const buyerUserId = await resolveBuyerUserId({
+    sessionUserId: user?.id ?? null,
+    email: buyerEmail,
+  });
 
   const admin = createAdminClient();
   const { data: reservationData, error: reservationError } = await admin
@@ -71,7 +78,7 @@ export async function POST(request: Request) {
       p_batch_id: input.data.batchId,
       p_buyer_name: buyerName,
       p_buyer_email: buyerEmail,
-      p_buyer_user_id: user?.id ?? null,
+      p_buyer_user_id: buyerUserId,
       p_promoter_code: input.data.promoterCode || null,
     })
     .single();
@@ -87,7 +94,7 @@ export async function POST(request: Request) {
   const { data: eventRow } = await admin
     .from("events")
     .select(
-      "id,title,organizer_id,organizers(id,fee_threshold_cents,fee_percent_upto_threshold,fee_percent_above_threshold,service_fee_platform_share_percent,primary_payment_provider,mp_access_token,mp_connection_status,asaas_wallet_id,asaas_connection_status)",
+      "id,title,organizer_id,organizers(id,fee_threshold_cents,fee_percent_upto_threshold,fee_percent_above_threshold,service_fee_platform_share_percent,primary_payment_provider,mp_access_token,mp_connection_status,asaas_wallet_id,asaas_connection_status,pagarme_recipient_id,pagarme_connection_status)",
     )
     .eq("id", reservation.event_id)
     .single();
@@ -154,11 +161,19 @@ export async function POST(request: Request) {
   const netAmountCents = ticketPriceCents + partnerShareCents;
   const marketplaceFeeCents = platformShareCents + insuranceCents;
   const resolvedProvider = resolveCheckoutProvider(organizer);
+  if (!resolvedProvider.pagarmeRecipientId) {
+    if (claimed) await admin.rpc("release_coupon_claim", { p_coupon_id: claimed.coupon_id });
+    await admin.rpc("release_reserved_ticket", { p_ticket_id: reservation.ticket_id });
+    return NextResponse.json(
+      { error: "Recebimento deste evento ainda não foi configurado" },
+      { status: 409 },
+    );
+  }
 
   const { data: payment, error: paymentError } = await admin
     .from("payments")
     .insert({
-      user_id: user?.id ?? null,
+      user_id: buyerUserId,
       event_id: reservation.event_id,
       ticket_batch_id: input.data.batchId,
       amount_cents: amountCents,
@@ -235,6 +250,7 @@ export async function POST(request: Request) {
     }
 
     await admin.from("payments").update({ checkout_url: statusUrl }).eq("id", payment.id);
+    await attachPaidTicketsToBuyerAccount(payment.id);
 
     return NextResponse.json({
       paymentId: payment.id,

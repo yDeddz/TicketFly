@@ -48,9 +48,9 @@ export const faqData: FAQData = {
         "Em Meus Ingressos (/painel), após entrar com a conta usada na compra. Cada item mostra evento, lote, status e acesso ao QR Code.",
     },
     {
-      question: "Como baixar meu ingresso em PDF?",
+      question: "Como baixar meu ingresso?",
       answer:
-        "O ingresso TicketFly é digital. Abra a página do ingresso no celular ou no computador e, se quiser uma cópia impressa, use a impressão do navegador (Salvar como PDF). O QR Code na tela já é válido na porta.",
+        "Abra o ingresso em Meus Ingressos ou na tela após o pagamento e toque em Baixar ingresso. O arquivo PNG com QR fica no celular para você usar mesmo offline. Na porta, o QR dinâmico da tela continua sendo o formato recomendado.",
     },
     {
       question: "Posso apresentar o ingresso pelo celular?",

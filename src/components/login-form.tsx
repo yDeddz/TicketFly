@@ -89,7 +89,8 @@ export function LoginForm() {
       }
 
       const next = searchParams.get("next");
-      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
+      await fetch("/api/tickets/claim", { method: "POST", credentials: "include" }).catch(() => null);
+      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/painel");
       router.refresh();
       return;
     }
@@ -110,7 +111,9 @@ export function LoginForm() {
     }
 
     if (data.session) {
-      router.replace("/");
+      await fetch("/api/tickets/claim", { method: "POST", credentials: "include" }).catch(() => null);
+      const next = searchParams.get("next");
+      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/painel");
       router.refresh();
       return;
     }

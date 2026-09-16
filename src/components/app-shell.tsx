@@ -46,7 +46,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         const { count } = await supabase
           .from("tickets")
           .select("id", { count: "exact", head: true })
-          .or(`buyer_user_id.eq.${user.id},buyer_email.eq.${user.email}`)
+          .or(`buyer_user_id.eq.${user.id},buyer_email.eq."${user.email.toLowerCase().replaceAll('"', "")}"`)
           .in("status", ["paid", "used", "pending"]);
 
         ticketCount = count ?? 0;

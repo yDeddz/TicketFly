@@ -31,21 +31,23 @@ export async function GET(
 
   const ticket = Array.isArray(data.tickets) ? data.tickets[0] : data.tickets;
   let ticketHref: string | null = null;
+  let ticketAccess: string | null = null;
+  const ticketCode = ticket?.code ?? null;
 
   if (data.status === "approved" && ticket?.code && ticket.buyer_email) {
     try {
-      const access = await signTicketAccessToken({
+      ticketAccess = await signTicketAccessToken({
         code: ticket.code,
         buyerEmail: ticket.buyer_email,
       });
-      ticketHref = publicTicketUrl(ticket.code, access);
+      ticketHref = publicTicketUrl(ticket.code, ticketAccess);
     } catch {
       ticketHref = publicTicketUrl(ticket.code);
     }
   }
 
   return NextResponse.json(
-    { ...data, ticketHref, requestId },
+    { ...data, ticketHref, ticketCode, ticketAccess, requestId },
     { headers: { "x-request-id": requestId } },
   );
 }

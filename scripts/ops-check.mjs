@@ -46,14 +46,14 @@ const required = [
 ];
 
 const payment = [
-  "MERCADO_PAGO_ACCESS_TOKEN",
-  "MERCADO_PAGO_WEBHOOK_SECRET",
-  "ASAAS_API_KEY",
-  "ASAAS_API_URL",
-  "ASAAS_WEBHOOK_TOKEN",
+  "PAGARME_SECRET_KEY",
+  "PAGARME_ACCOUNT_ID",
+  "PAGARME_PLATFORM_RECIPIENT_ID",
+  "PAGARME_WEBHOOK_SECRET",
+  "PAGARME_API_URL",
 ];
 
-const optional = ["MERCADO_PAGO_CLIENT_ID", "MERCADO_PAGO_CLIENT_SECRET"];
+const optional = [];
 
 function present(key) {
   const value = env[key]?.trim() ?? "";
@@ -93,17 +93,19 @@ console.log(`Pasta: ${ROOT}`);
 console.log(`.env.local: ${existsSync(resolve(ROOT, ".env.local")) ? "encontrado" : "AUSENTE — copie de .env.example"}`);
 
 const missingRequired = report("Obrigatórias", required, "required");
-const missingPayment = report("Pagamentos (pelo menos um provedor completo)", payment, "optional");
+report("Pagar.me/Stone", payment, "required");
 report("Opcionais", optional, "optional");
 
-const mpReady = present("MERCADO_PAGO_ACCESS_TOKEN") && present("MERCADO_PAGO_WEBHOOK_SECRET");
-const asaasReady = present("ASAAS_API_KEY") && present("ASAAS_WEBHOOK_TOKEN");
+const pagarmeReady =
+  present("PAGARME_SECRET_KEY") &&
+  present("PAGARME_PLATFORM_RECIPIENT_ID") &&
+  present("PAGARME_WEBHOOK_SECRET");
 const qrOk = (env.TICKET_QR_SECRET ?? "").trim().length >= 32;
 const cronOk = (env.CRON_SECRET ?? "").trim().length >= 32;
 
 const appHost = hostOf(env.NEXT_PUBLIC_APP_URL ?? "");
 const projectRef = supabaseRef(env.NEXT_PUBLIC_SUPABASE_URL ?? "");
-const asaasHost = hostOf(env.ASAAS_API_URL ?? "");
+const pagarmeHost = hostOf(env.PAGARME_API_URL ?? "");
 const cronUrl = `https://${CANONICAL_APP_HOST}/api/cron/expire-reservations`;
 
 console.log("\nAlinhamento (produção yDeddz)");
@@ -111,7 +113,7 @@ console.log(`  App host: ${appHost || "(vazio)"}`);
 console.log(`  Esperado: ${CANONICAL_APP_HOST}`);
 console.log(`  Supabase ref: ${projectRef || "(vazio)"}`);
 console.log(`  Esperado: ${CANONICAL_SUPABASE_REF}`);
-console.log(`  Asaas API: ${asaasHost || "(vazio)"}`);
+console.log(`  Pagar.me API: ${pagarmeHost || "(vazio)"}`);
 console.log(`  Cron HTTP: ${cronUrl}`);
 console.log("  Mapa: docs/AMBIENTE.md");
 
@@ -137,16 +139,11 @@ if (appHost && appHost !== CANONICAL_APP_HOST && appHost !== "localhost:3000") {
   alignmentFailed = true;
 }
 
-if (present("ASAAS_API_URL") && env.ASAAS_API_URL.includes("sandbox")) {
-  console.log("  Asaas em SANDBOX — use só para homologação isolada, nunca no ar.");
-}
-
 console.log("\nResumo operacional");
 console.log(`  QR secret ≥32 chars: ${qrOk ? "ok" : "FALTA"}`);
 console.log(`  CRON_SECRET ≥32 chars: ${cronOk ? "ok" : "FALTA"}`);
-console.log(`  Mercado Pago pronto: ${mpReady ? "ok" : "não"}`);
-console.log(`  Asaas pronto: ${asaasReady ? "ok" : "não"}`);
-console.log(`  Vendas na porta (exige Asaas): ${asaasReady ? "ok" : "bloqueado"}`);
+console.log(`  Pagar.me/Stone pronto: ${pagarmeReady ? "ok" : "não"}`);
+console.log(`  Vendas na porta: ${pagarmeReady ? "ok" : "bloqueado"}`);
 
 const appUrl = env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 console.log("\nPróximos passos");
@@ -155,9 +152,9 @@ console.log("  2. yDeddz: SQL Editor do projeto TicketFly — função expire_st
 console.log("  3. npm run ops:export-env → André cola na Vercel ticket-fly");
 console.log(`  4. Conferir job externo → ${cronUrl}`);
 console.log(`  5. Abrir ${appUrl.replace(/\/$/, "")}/eventos/ops-teste-agosto`);
-console.log("  6. Comprar, confirmar webhook Asaas e escanear em /checkin");
+console.log("  6. Comprar, confirmar webhook Pagar.me e escanear em /checkin");
 
-if (missingRequired || !qrOk || !cronOk || (!mpReady && !asaasReady) || alignmentFailed) {
+if (missingRequired || !qrOk || !cronOk || !pagarmeReady || alignmentFailed) {
   console.log("\nAmbiente incompleto ou desalinhado. Ver docs/AMBIENTE.md.");
   process.exit(1);
 }
