@@ -67,7 +67,7 @@ export function ResetPasswordForm() {
     setMessage("");
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      setError("Configure o Supabase para autenticar.");
+      setError("Não foi possível recuperar a senha agora. Tente de novo em instantes.");
       return;
     }
 
@@ -125,7 +125,7 @@ export function ResetPasswordForm() {
     setMessage("");
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      setError("Configure o Supabase para autenticar.");
+      setError("Não foi possível recuperar a senha agora. Tente de novo em instantes.");
       return;
     }
 

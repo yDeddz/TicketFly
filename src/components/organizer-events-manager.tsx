@@ -499,7 +499,7 @@ export function OrganizerEventsManager({
         description={
           pendingAction?.status === "published"
             ? !paymentsReady
-              ? "Recebimento ainda não está conectado."
+              ? "A conta de recebimento ainda não está pronta. A TicketFly está configurando isso para você."
               : (events.find((item) => item.id === pendingAction.id)?.ticket_batches.filter((b) => b.is_active).length ?? 0) === 0
                 ? "Este evento ainda não tem lote ativo."
                 : "O evento ficará visível na vitrine e poderá receber compras imediatamente."

@@ -32,7 +32,7 @@ export async function GET(request: Request, { params }: Params) {
 
   if (!ticketIsQrEligible(ticket.status)) {
     return apiError(409, {
-      message: "QR indisponível para este status",
+      message: "QR Code indisponível para este ingresso",
       code: "TICKET_QR_UNAVAILABLE",
       requestId,
     });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/auth-guards";
-import { refundTicketLocally } from "@/lib/refunds";
+import { refundResultMessage, refundTicketLocally } from "@/lib/refunds";
 
 const bodySchema = z.object({
   reason: z.string().trim().max(500).optional().or(z.literal("")),
@@ -37,10 +37,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     mpRefunded: result.mpRefunded,
     providerRefunded: result.providerRefunded,
     partial: result.partial,
-    message: result.partial
-      ? "Ingresso cancelado localmente, mas o estorno no provedor falhou — verifique manualmente no painel do pagamento."
-      : result.providerRefunded
-        ? "Reembolso processado (inclui estorno no provedor)."
-        : "Reembolso registrado localmente.",
+    message: refundResultMessage(result),
   });
 }

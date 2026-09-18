@@ -38,22 +38,22 @@ export function WalletButton({
       const response = await fetch(withAccess(`/api/tickets/${code}/wallet/apple`, accessToken));
       if (response.status === 503 || response.status === 500) {
         const payload = await response.json().catch(() => ({}));
-        setMessage(payload.message ?? "Apple Wallet ainda não configurada neste ambiente. Baixe o QR.");
+        setMessage(payload.message ?? "Apple Wallet indisponível no momento. Baixe o QR Code.");
         return;
       }
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        setMessage(payload.error ?? "Não foi possível gerar o pass Apple");
+        setMessage(payload.error ?? "Não foi possível gerar o ingresso da Apple Wallet");
         return;
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `pinkpass-${code.slice(0, 8)}.pkpass`;
+      anchor.download = `ticketfly-${code.slice(0, 8)}.pkpass`;
       anchor.click();
       URL.revokeObjectURL(url);
-      setMessage("Pass Apple baixado.");
+      setMessage("Ingresso da Apple Wallet baixado.");
     } catch {
       setMessage("Falha de rede ao gerar Apple Wallet");
     } finally {
@@ -68,7 +68,7 @@ export function WalletButton({
       const response = await fetch(withAccess(`/api/tickets/${code}/wallet/google`, accessToken));
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setMessage(payload.message ?? payload.error ?? "Google Wallet não disponível");
+        setMessage(payload.message ?? payload.error ?? "Google Wallet indisponível no momento.");
         return;
       }
       window.location.href = payload.saveUrl;
@@ -84,9 +84,9 @@ export function WalletButton({
     const href = withAccess(`/api/tickets/${code}/wallet/qr`, accessToken);
     const anchor = document.createElement("a");
     anchor.href = href;
-    anchor.download = `pinkpass-${code.slice(0, 8)}.png`;
+    anchor.download = `ticketfly-${code.slice(0, 8)}.png`;
     anchor.click();
-    setMessage("QR baixado — salve em Fotos / Arquivos.");
+    setMessage("QR Code baixado. Salve em Fotos ou Arquivos.");
     setBusy(null);
   }
 
@@ -132,7 +132,7 @@ export function WalletButton({
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-white/90 hover:bg-white/[0.06] disabled:opacity-60"
           >
             {busy === "qr" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Baixar QR (fallback)
+            Baixar QR Code
           </button>
           {message ? <p className="px-3 pb-2 pt-1 text-xs text-[#ffb1d5]">{message}</p> : null}
         </div>

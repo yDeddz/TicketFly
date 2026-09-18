@@ -41,19 +41,19 @@ export async function GET(request: Request, { params }: Params) {
   try {
     const buffer = await buildApplePkpassBuffer(ticket);
     if (!buffer) {
-      return NextResponse.json({ error: "Falha ao gerar pass" }, { status: 500 });
+      return NextResponse.json({ error: "Não foi possível gerar o ingresso da Apple Wallet" }, { status: 500 });
     }
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",
-        "Content-Disposition": `attachment; filename="pinkpass-${ticket.code.slice(0, 8)}.pkpass"`,
+        "Content-Disposition": `attachment; filename="ticketfly-${ticket.code.slice(0, 8)}.pkpass"`,
         "Cache-Control": "no-store",
       },
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao gerar Apple Pass";
+  } catch {
+    const message = "Não foi possível gerar o ingresso da Apple Wallet";
     return NextResponse.json({ error: message, fallback: "qr" }, { status: 500 });
   }
 }

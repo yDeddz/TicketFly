@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DownloadTicketButton } from "@/components/download-ticket-button";
+import { paymentStatusLabel } from "@/components/status-badges";
 import { TicketQrLive } from "@/components/ticket-qr-live";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { formatCurrency } from "@/lib/format";
@@ -33,12 +34,12 @@ const copy: Record<string, { title: string; body: string; tone: "success" | "war
   },
   pending: {
     title: "Pagamento em processamento",
-    body: "Assim que o provedor confirmar, o ingresso libera automaticamente. Você pode atualizar o status abaixo.",
+    body: "Assim que o pagamento confirmar, o ingresso libera automaticamente. Você pode atualizar abaixo.",
     tone: "info",
   },
   rejected: {
     title: "Pagamento recusado",
-    body: "O provedor não aprovou esta cobrança. Tente novamente com outro meio de pagamento.",
+    body: "Este pagamento não foi aprovado. Tente novamente com outro meio de pagamento.",
     tone: "error",
   },
   cancelled: {
@@ -97,7 +98,7 @@ export function PaymentStatusClient({
         }
         setPollCount((n) => n + 1);
       } catch {
-        setError("Falha de rede ao consultar o pagamento");
+        setError("Não foi possível atualizar agora. Verifique sua conexão.");
       } finally {
         if (!silent) setRefreshing(false);
       }
@@ -143,8 +144,8 @@ export function PaymentStatusClient({
       <p className="text-sm font-bold uppercase text-[#ff1493]">Status do pagamento</p>
       <h1 className="mt-2 text-3xl font-black">{statusCopy.title}</h1>
       <p className="mt-3 text-[#c9aabc]">
-        Valor: {formatCurrency(payment.amount_cents)} · Status: {payment.status}
-        {ticket?.status ? ` · Ingresso: ${ticket.status}` : ""}
+        Valor: {formatCurrency(payment.amount_cents)}
+        {payment.status ? ` · ${paymentStatusLabel(payment.status)}` : ""}
       </p>
       <p className="mt-2 text-sm text-white/55">{statusCopy.body}</p>
 
@@ -156,8 +157,8 @@ export function PaymentStatusClient({
 
       {pendingTooLong ? (
         <AlertBanner tone="warning" className="mt-4">
-          Ainda sem confirmação após alguns minutos. Se você já pagou, aguarde o e-mail ou fale com o suporte
-          informando o ID <span className="font-mono">{payment.id.slice(0, 8)}</span>.
+          Ainda sem confirmação após alguns minutos. Se você já pagou, aguarde o e-mail ou fale com o
+          suporte informando o e-mail da compra.
         </AlertBanner>
       ) : null}
 

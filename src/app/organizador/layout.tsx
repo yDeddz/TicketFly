@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { OrganizerProfileForm } from "@/components/organizer-profile-form";
+import { organizerStatusLabel } from "@/components/status-badges";
 import { ORGANIZER_PROFILE_SELECT, isOrganizerProfileComplete, organizerReceivingReady } from "@/lib/organizer-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -73,7 +74,7 @@ export default async function OrganizerLayout({ children }: { children: React.Re
         <div className="mb-6 rounded-2xl border border-amber-400/25 bg-[#120410] p-6">
           <h1 className="text-2xl font-black">{organizer.trade_name}</h1>
           <p className="mt-2 text-amber-100/90">
-            Status: <strong>{organizer.status === "pending" ? "aguardando aprovação" : organizer.status}</strong>. O dashboard
+            Status: <strong>{organizerStatusLabel(organizer.status)}</strong>. O dashboard
             completo libera quando a TicketFly aprovar o contrato.
           </p>
         </div>
@@ -93,7 +94,7 @@ export default async function OrganizerLayout({ children }: { children: React.Re
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">Parceiro TicketFly</p>
         </div>
         <h1 className="mt-2 text-3xl font-black md:text-4xl">{organizer.trade_name}</h1>
-        <p className="mt-2 text-sm text-white/55">Vendas, porta, QR Code e reembolsos com visão operacional.</p>
+        <p className="mt-2 text-sm text-white/55">Vendas, porta, QR Code e reembolsos.</p>
       </div>
       {!profileComplete ? (
         <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">

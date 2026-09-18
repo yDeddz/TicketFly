@@ -61,7 +61,7 @@ export async function GET(request: Request, { params }: Params) {
   if (!ticketIsQrEligible(ticket.status)) {
     return NextResponse.json(
       {
-        error: "QR indisponível",
+        error: "QR Code indisponível",
         status: ticket.status,
         message:
           ticket.status === "used"

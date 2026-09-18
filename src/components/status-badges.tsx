@@ -55,6 +55,21 @@ export function paymentStatusLabel(status: string) {
   }
 }
 
+export function organizerStatusLabel(status: string) {
+  switch (status) {
+    case "pending":
+      return "Aguardando aprovação";
+    case "approved":
+      return "Aprovado";
+    case "rejected":
+      return "Não aprovado";
+    case "suspended":
+      return "Suspenso";
+    default:
+      return status;
+  }
+}
+
 export function Money({ cents }: { cents: number }) {
   return <>{formatCurrency(cents)}</>;
 }

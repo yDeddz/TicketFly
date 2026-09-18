@@ -41,7 +41,7 @@ export function OrganizerAsaasConnectForm({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(getErrorMessage(data, "Não foi possível alterar o provedor"));
+        setError(getErrorMessage(data, "Não foi possível alterar a forma de recebimento"));
         return;
       }
       startTransition(() => router.refresh());

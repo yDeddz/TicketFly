@@ -22,12 +22,12 @@ export const faqData: FAQData = {
     {
       question: "Como comprar ingressos online pela TicketFly?",
       answer:
-        "Acesse a página do evento, informe nome e e-mail, escolha o lote, opcionalmente adicione a Proteção de Compra e um cupom, e finalize no checkout seguro (Pix ou cartão). Depois da aprovação, o ingresso digital fica em Meus Ingressos (/painel) e no link da tela de status.",
+        "Acesse a página do evento, informe nome e e-mail, escolha o lote, opcionalmente adicione a Proteção de Compra e um cupom, e finalize com Pix ou cartão. Depois da aprovação, o ingresso digital fica em Meus Ingressos e no link da tela de acompanhamento.",
     },
     {
       question: "Como encontrar meus ingressos após a compra?",
       answer:
-        "Entre na sua conta TicketFly e abra Meus Ingressos em /painel. Lá você vê o histórico, o status e o QR Code de cada ingresso pago. Também pode usar o link individual enviado após a aprovação do pagamento.",
+        "Entre na sua conta TicketFly e abra Meus Ingressos no menu. Lá você vê o histórico, o status e o QR Code de cada ingresso. Também pode usar o link enviado após a aprovação do pagamento.",
     },
     {
       question: "Posso comprar ingressos pelo celular?",
@@ -42,46 +42,46 @@ export const faqData: FAQData = {
     {
       question: "Posso comprar mais de um ingresso na mesma compra?",
       answer:
-        "Cada checkout gera um ingresso por vez. Para levar mais pessoas, repita a compra no mesmo evento (ou em lotes diferentes) quantas vezes precisar — todos os ingressos ficam reunidos no seu painel.",
+        "Cada compra gera um ingresso por vez. Para levar mais pessoas, repita a compra no mesmo evento (ou em lotes diferentes) quantas vezes precisar — todos os ingressos ficam reunidos em Meus Ingressos.",
     },
   ],
   "meus-ingressos": [
     {
       question: "Onde ficam meus ingressos comprados?",
       answer:
-        "Em Meus Ingressos (/painel), após entrar com a conta usada na compra. Cada item mostra evento, lote, status e acesso ao QR Code.",
+        "Em Meus Ingressos, após entrar com a conta usada na compra. Cada item mostra evento, lote, status e acesso ao QR Code.",
     },
     {
       question: "Como baixar meu ingresso?",
       answer:
-        "Abra o ingresso em Meus Ingressos ou na tela após o pagamento e toque em Baixar ingresso. O arquivo PNG com QR fica no celular para você usar mesmo offline. Na porta, o QR dinâmico da tela continua sendo o formato recomendado.",
+        "Abra o ingresso em Meus Ingressos ou na tela após o pagamento e toque em Baixar ingresso. O arquivo com QR fica no celular para você usar mesmo offline. Na porta, o QR Code na tela continua sendo o formato recomendado.",
     },
     {
       question: "Posso apresentar o ingresso pelo celular?",
       answer:
-        "Sim — é o formato recomendado. Abra o ingresso no painel ou pelo link recebido e mostre o QR Code na entrada. Mantenha o brilho da tela alto para facilitar a leitura.",
+        "Sim — é o formato recomendado. Abra o ingresso em Meus Ingressos ou pelo link recebido e mostre o QR Code na entrada. Mantenha o brilho da tela alto para facilitar a leitura.",
     },
     {
       question: "Perdi o e-mail da compra. Como recuperar meu ingresso?",
       answer:
-        "Faça login com o mesmo e-mail da compra e acesse /painel. Se ainda não tiver conta, crie uma com esse e-mail: os ingressos pagos vinculados a ele passam a aparecer automaticamente.",
+        "Entre com o mesmo e-mail da compra e abra Meus Ingressos. Se ainda não tiver conta, crie uma com esse e-mail: os ingressos vinculados a ele passam a aparecer automaticamente.",
     },
     {
       question: "Como verificar se meu ingresso é válido?",
       answer:
-        "No painel ou na página do ingresso, confira se o status está como pago (não cancelado nem já utilizado). Na porta, a validação oficial é feita pelo check-in da TicketFly ao escanear o QR Code.",
+        "Em Meus Ingressos ou na página do ingresso, confira se o status está como pago (não cancelado nem já utilizado). Na porta, a validação oficial é feita ao escanear o QR Code.",
     },
   ],
   pagamentos: [
     {
       question: "Quais formas de pagamento a TicketFly aceita?",
       answer:
-        "Aceitamos Pix, cartão de crédito e as demais formas exibidas no checkout no momento do pagamento, conforme o provedor conectado ao evento (Asaas ou Mercado Pago).",
+        "Aceitamos Pix, cartão de crédito e as demais formas exibidas na hora do pagamento.",
     },
     {
       question: "O pagamento foi aprovado, mas não recebi meu ingresso. O que fazer?",
       answer:
-        "Aguarde alguns minutos e atualize Meus Ingressos. Se o pagamento já foi confirmado e o ingresso ainda não aparece, confira o e-mail da compra, o spam e a página /status da compra. Persistindo o problema, fale com o suporte informando o e-mail e o comprovante.",
+        "Aguarde alguns minutos e atualize Meus Ingressos. Se o pagamento já foi confirmado e o ingresso ainda não aparece, confira o e-mail da compra, o spam e a tela de acompanhamento da compra. Persistindo o problema, fale com o suporte informando o e-mail e o comprovante.",
     },
     {
       question: "Como solicitar o reembolso de um ingresso?",
@@ -91,7 +91,7 @@ export const faqData: FAQData = {
     {
       question: "Quanto tempo leva para o pagamento ser confirmado?",
       answer:
-        "Pix costuma confirmar em segundos ou poucos minutos. Cartão pode levar um pouco mais, conforme a análise do provedor. Assim que o pagamento for aprovado, o ingresso é liberado automaticamente.",
+        "Pix costuma confirmar em segundos ou poucos minutos. Cartão pode levar um pouco mais, conforme a análise do pagamento. Assim que for aprovado, o ingresso é liberado automaticamente.",
     },
     {
       question: "Posso cancelar minha compra?",
@@ -118,19 +118,19 @@ export const faqData: FAQData = {
     {
       question: "Como evitar golpes na compra de ingressos?",
       answer:
-        "Compre apenas pela TicketFly ou por links oficiais do organizador. Desconfie de QR Codes enviados por redes sociais, preços muito abaixo do lote e transferências diretas. Seu ingresso válido aparece no painel após pagamento aprovado.",
+        "Compre apenas pela TicketFly ou por links oficiais do organizador. Desconfie de QR Codes enviados por redes sociais, preços muito abaixo do lote e transferências diretas. Seu ingresso válido aparece em Meus Ingressos após o pagamento aprovado.",
     },
     {
       question: "A TicketFly protege meus dados pessoais?",
       answer:
-        "Sim. Usamos autenticação segura; dados de cartão ficam com o provedor de pagamento. As informações da conta e dos ingressos são usadas para operar a compra, o acesso ao evento e o suporte.",
+        "Sim. Usamos autenticação segura; dados de cartão ficam com o serviço de pagamento. As informações da conta e dos ingressos são usadas para operar a compra, o acesso ao evento e o suporte.",
     },
   ],
   "criar-eventos": [
     {
       question: "Como criar um evento na TicketFly?",
       answer:
-        "Candidate-se em /parceiros. Após a aprovação do contrato de parceria, você acessa o painel do organizador e cadastra o evento com data, local, lotes e configurações de venda.",
+        "Candidate-se em Quero ser parceiro. Após a aprovação do contrato, você acessa o painel do organizador e cadastra o evento com data, local, lotes e configurações de venda.",
     },
     {
       question: "Quanto custa publicar um evento?",
@@ -157,7 +157,7 @@ export const faqData: FAQData = {
     {
       question: "Como vender ingressos online pela TicketFly?",
       answer:
-        "Com o evento publicado, compartilhe a página pública. Os compradores pagam no checkout seguro (Pix ou cartão) e recebem o ingresso digital. Você acompanha vendas, cupons e check-in no painel do organizador.",
+        "Com o evento publicado, compartilhe a página pública. Os compradores pagam com Pix ou cartão e recebem o ingresso digital. Você acompanha vendas, cupons e check-in no painel do organizador.",
     },
     {
       question: "Posso criar diferentes lotes de ingressos?",
@@ -172,7 +172,7 @@ export const faqData: FAQData = {
     {
       question: "Como acompanhar as vendas em tempo real?",
       answer:
-        "No painel do organizador você vê ingressos vendidos, reservas, pagamentos e relatórios. Também é possível integrar webhooks para receber eventos de venda no seu sistema.",
+        "No painel do organizador você vê ingressos vendidos, reservas, pagamentos e relatórios. Também é possível receber avisos automáticos de venda no seu sistema.",
     },
     {
       question: "Como funciona a taxa da TicketFly?",
@@ -201,7 +201,7 @@ export const faqData: FAQData = {
     {
       question: "Como validar ingressos na entrada do evento?",
       answer:
-        "A equipe acessa /checkin com login de organizador ou operação, seleciona o evento e valida o ingresso pela câmera (QR Code) ou pelo código manual. O resultado aparece na hora (válido, já usado, cancelado, não pago ou não encontrado).",
+        "A equipe acessa o check-in com login de organizador ou operação, seleciona o evento e valida o ingresso pela câmera (QR Code) ou pelo código manual. O resultado aparece na hora (válido, já usado, cancelado, não pago ou não encontrado).",
     },
     {
       question: "O aplicativo de check-in funciona offline?",
@@ -213,7 +213,7 @@ export const faqData: FAQData = {
     {
       question: "Como acessar o painel do organizador?",
       answer:
-        "Com a parceria aprovada, entre na sua conta TicketFly e acesse /organizador. Lá ficam eventos, ingressos, cupons, promotores, pagamentos e reembolsos.",
+        "Com a parceria aprovada, entre na sua conta TicketFly e abra o painel do organizador. Lá ficam eventos, ingressos, cupons, promotores, pagamentos e reembolsos.",
     },
     {
       question: "Como editar um evento já publicado?",
@@ -228,12 +228,12 @@ export const faqData: FAQData = {
     {
       question: "Como visualizar relatórios de vendas?",
       answer:
-        "No painel do organizador há visão de vendas, ingressos e pagamentos. Também é possível exportar dados e acompanhar o financeiro do provedor conectado (Asaas ou Mercado Pago).",
+        "No painel do organizador há visão de vendas, ingressos e pagamentos. Também é possível exportar dados e acompanhar o financeiro da conta de recebimento.",
     },
     {
       question: "Quando recebo o repasse das vendas?",
       answer:
-        "O valor líquido do ingresso segue para a conta do organizador no provedor conectado (Asaas ou Mercado Pago), conforme a liquidação. A taxa de serviço é tratada à parte, de acordo com o contrato de parceria.",
+        "O valor líquido do ingresso segue para a conta de recebimento do organizador, conforme a liquidação. A taxa de serviço é tratada à parte, de acordo com o contrato de parceria.",
     },
   ],
   alteracoes: [
@@ -255,7 +255,7 @@ export const faqData: FAQData = {
     {
       question: "O que acontece se o evento for cancelado?",
       answer:
-        "Em cancelamento, o organizador e a TicketFly orientam o fluxo de reembolso ou remarcação. Ingressos cancelados deixam de ser válidos no check-in e o status é atualizado no painel.",
+        "Em cancelamento, o organizador e a TicketFly orientam o fluxo de reembolso ou remarcação. Ingressos cancelados deixam de ser válidos no check-in e o status é atualizado em Meus Ingressos.",
     },
     {
       question: "Posso trocar meu ingresso por outro lote?",
@@ -267,12 +267,12 @@ export const faqData: FAQData = {
     {
       question: "Como criar uma conta na TicketFly?",
       answer:
-        "Acesse /login e cadastre-se com e-mail. Use o mesmo e-mail das compras para ver automaticamente seus ingressos em Meus Ingressos.",
+        "Abra Entrar e cadastre-se com e-mail. Use o mesmo e-mail das compras para ver automaticamente seus ingressos em Meus Ingressos.",
     },
     {
       question: "Esqueci minha senha. Como recuperar?",
       answer:
-        "Na tela de login, solicite a redefinição de senha. Você receberá um e-mail com um código de 8 dígitos para criar uma nova senha em /redefinir-senha.",
+        "Na tela de login, solicite a redefinição de senha. Você receberá um e-mail com um código de 8 dígitos para criar uma nova senha.",
     },
     {
       question: "Como alterar meu e-mail cadastrado?",

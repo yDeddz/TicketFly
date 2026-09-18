@@ -77,7 +77,7 @@ export function TicketsOperationsTable({
       }
       if (body?.partial) {
         setMessageTone("warning");
-        setMessage(body.message ?? "Ingresso cancelado, mas o estorno no provedor falhou.");
+        setMessage(body.message ?? "Ingresso cancelado, mas o estorno automático falhou.");
       } else {
         setMessageTone("success");
         setMessage(body?.message ?? "Reembolso registrado.");
@@ -224,7 +224,7 @@ export function TicketsOperationsTable({
       <ConfirmDialog
         open={Boolean(pendingRefundId)}
         title="Confirmar reembolso"
-        description="Esta ação cancela o ingresso e tenta estornar o pagamento no provedor. Não pode ser desfeita."
+        description="Esta ação cancela o ingresso e tenta estornar o pagamento. Não pode ser desfeita."
         confirmLabel="Reembolsar agora"
         tone="danger"
         busy={busyId === pendingRefundId}

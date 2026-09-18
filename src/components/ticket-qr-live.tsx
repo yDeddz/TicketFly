@@ -51,7 +51,7 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
       const payload = await response.json();
 
       if (!response.ok) {
-        const message = payload.message ?? payload.error ?? "QR indisponível";
+        const message = payload.message ?? payload.error ?? "QR Code indisponível";
         const stillValid = expiresAtRef.current > Date.now();
         if (stillValid) {
           setRefreshWarning(`${message}. Mantendo o QR atual até expirar.`);
@@ -106,7 +106,7 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
         return;
       }
       setSession(null);
-      setError("Falha ao gerar sessão do QR");
+      setError("Não foi possível gerar o QR Code");
       setLoading(false);
       scheduleRetry(5_000, () => {
         void load();
@@ -157,7 +157,7 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
             unoptimized
             className="h-72 w-72 rounded-md bg-white p-3"
             src={session.dataUrl}
-            alt="QR Code dinâmico do ingresso"
+            alt="QR Code do ingresso"
             width={288}
             height={288}
             priority
@@ -193,7 +193,7 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
       <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-[#ffb1d5]">
         <span className="inline-flex items-center gap-1.5">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-          Sessão assinada · {secondsLeft}s
+          Atualiza em {secondsLeft}s
         </span>
         <button
           type="button"
@@ -205,8 +205,8 @@ export function TicketQrLive({ code, accessToken, initialStatus }: TicketQrLiveP
         </button>
       </div>
       <p className="text-center text-xs text-[#c9aabc]">
-        Este QR e o código da porta rotacionam juntos. Na Wallet, use o pass salvo — ele permanece
-        válido até o fim do evento.
+        Este QR e o código da porta mudam juntos. Na Wallet, use o ingresso salvo — ele vale até o
+        fim do evento.
       </p>
     </div>
   );

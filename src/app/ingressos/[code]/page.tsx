@@ -77,7 +77,14 @@ export default async function TicketPage({
             <TicketQrLive code={ticket.code} accessToken={access} initialStatus={ticket.status} />
           ) : (
             <div className="rounded-md border border-[#f5a524]/50 bg-[#261802] p-4 text-sm font-medium text-[#ffd27a]">
-              QR Code indisponível. Status atual: {ticket.status}.
+              QR Code indisponível.{" "}
+              {ticket.status === "used"
+                ? "Este ingresso já foi usado na entrada."
+                : ticket.status === "cancelled"
+                  ? "Este ingresso foi cancelado ou reembolsado."
+                  : ticket.status === "pending"
+                    ? "Ele libera depois da confirmação do pagamento."
+                    : "Tente novamente em instantes."}
             </div>
           )}
 
@@ -106,8 +113,7 @@ export default async function TicketPage({
             Ref. {ticket.code}
           </p>
           <p className="text-center text-[11px] text-[#c9aabc]/80">
-            A referência pública não libera entrada. Use o QR dinâmico ou o código curto da porta
-            exibido acima.
+            Mostre o QR Code na entrada. O código abaixo é só para conferência e não substitui o QR.
           </p>
         </div>
       </section>

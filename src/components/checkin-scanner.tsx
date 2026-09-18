@@ -345,8 +345,8 @@ export function CheckinScanner({ events }: { events: CheckinEventOption[] }) {
         </label>
 
         <p className="mb-3 text-sm text-[#c9aabc]">
-          Escaneie o QR dinâmico / Wallet, ou digite o código curto da porta (ex.: AB12-CD34). Ingressos
-          de outro evento são rejeitados.
+          Escaneie o QR Code do celular (ou da Wallet) ou digite o código da porta (ex.: AB12-CD34).
+          Ingressos de outro evento não entram.
         </p>
 
         {wakeLockActive ? (

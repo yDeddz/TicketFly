@@ -53,7 +53,7 @@ export function LoginForm() {
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setLoading(false);
-      setError("Configure o Supabase para autenticar.");
+      setError("Não foi possível entrar agora. Tente de novo em instantes.");
       return;
     }
 
@@ -126,7 +126,7 @@ export function LoginForm() {
     mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Esqueci a senha";
   const subtitle =
     mode === "login"
-      ? "Use e-mail e senha para acessar ingressos e o painel."
+      ? "Entre com e-mail e senha para ver seus ingressos."
       : mode === "signup"
         ? "Cadastre-se com e-mail e senha em poucos segundos."
         : "Informe seu e-mail e enviaremos um código de 8 dígitos para criar uma nova senha.";
@@ -281,7 +281,7 @@ export function LoginForm() {
         )}
         {mode === "forgot"
           ? "O código expira em poucos minutos. Digite-o na próxima tela com a nova senha."
-          : "Acesso com e-mail e senha. Sessão mantida no navegador."}
+          : "Seus dados ficam protegidos neste acesso."}
       </p>
 
       <div className="relative flex justify-center border-t border-white/8 pt-4">

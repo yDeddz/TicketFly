@@ -7,13 +7,12 @@ export default function ResetPasswordPage() {
     <main className="ticket-grid px-4 pb-16 pt-8">
       <section className="mx-auto grid min-h-[calc(100vh-12rem)] max-w-6xl gap-8 md:grid-cols-[1fr_460px] md:items-center">
         <div>
-          <p className="text-sm font-black uppercase text-[#ff1493]">TicketFly ID</p>
+          <p className="text-sm font-black uppercase text-[#ff1493]">Sua conta</p>
           <h1 className="mt-4 text-5xl font-black leading-none md:text-7xl">
             Redefina sua senha com um código.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-white/62">
-            Receba um código de 8 dígitos no e-mail, confirme na tela e escolha uma senha nova — sem
-            depender de links que abrem na home.
+            Receba um código de 8 dígitos no e-mail, confirme na tela e escolha uma senha nova.
           </p>
         </div>
         <Suspense

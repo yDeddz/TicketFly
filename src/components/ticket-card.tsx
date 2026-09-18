@@ -69,7 +69,7 @@ export function TicketCard({ ticket }: { ticket: WalletTicket }) {
 
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={TIER_BADGE[tier]}>{tier}</Badge>
-              {ticket.qrReady ? <Badge variant="qr">QR disponível</Badge> : null}
+              {ticket.qrReady ? <Badge variant="qr">Pronto para a entrada</Badge> : null}
             </div>
 
             <div className="mt-auto flex flex-wrap items-center gap-2.5 pt-1">
@@ -96,7 +96,7 @@ export function TicketCard({ ticket }: { ticket: WalletTicket }) {
           </div>
           <div className="text-left lg:text-center">
             <p className="text-sm font-semibold text-white">
-              {ticket.qrReady ? "Abrir QR dinâmico" : "Ingresso"}
+              {ticket.qrReady ? "Ver QR Code" : "Ingresso"}
             </p>
             <p className="font-mono text-xs text-white/45">{ticket.code.slice(0, 8).toUpperCase()}</p>
           </div>

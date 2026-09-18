@@ -135,7 +135,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
     setMessage(
       body?.invited
         ? "Contrato criado. O parceiro recebeu e-mail para definir a senha."
-        : "Contrato criado. Peça ao parceiro para usar “Esqueci a senha” em /login se ainda não tiver acesso.",
+        : "Contrato criado. Peça ao parceiro para usar “Esqueci a senha” na tela de entrar, se ainda não tiver acesso.",
     );
     router.refresh();
   }

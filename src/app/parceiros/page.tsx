@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { PartnerApplyForm } from "@/components/partner-apply-form";
+import { organizerStatusLabel } from "@/components/status-badges";
 import { FAQ } from "@/components/ui/faq-tabs";
 import { hasSupabaseConfig } from "@/lib/env";
 import { organizerFaqCategories, organizerFaqData } from "@/lib/faq-data";
@@ -141,7 +142,10 @@ export default async function PartnersPage() {
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">Status</p>
               <h2 className="mt-2 text-3xl font-black">Você já tem uma candidatura</h2>
               <p className="mt-3 text-white/62">
-                Status atual: <strong className="text-white">{partnerStatus}</strong>
+                Status atual:{" "}
+                <strong className="text-white">
+                  {partnerStatus ? organizerStatusLabel(partnerStatus) : "Em análise"}
+                </strong>
               </p>
               <Link
                 href="/organizador"

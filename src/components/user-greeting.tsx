@@ -15,11 +15,17 @@ export function UserGreeting({ name, activeCount }: UserGreetingProps) {
           Olá, {name} <span className="inline-block">👋</span>
         </h1>
         <p className="max-w-md text-white/60">
-          Você possui{" "}
-          <span className="font-semibold text-white">
-            {activeCount} {activeCount === 1 ? "ingresso ativo" : "ingressos ativos"}
-          </span>
-          . Todos prontos para uso.
+          {activeCount === 0 ? (
+            "Você ainda não tem ingressos. Explore os eventos e compre o seu."
+          ) : (
+            <>
+              Você possui{" "}
+              <span className="font-semibold text-white">
+                {activeCount} {activeCount === 1 ? "ingresso ativo" : "ingressos ativos"}
+              </span>
+              , prontos para a entrada.
+            </>
+          )}
         </p>
       </div>
       <Link href="/eventos" className="neon-button btn h-12 px-6 text-sm">

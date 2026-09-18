@@ -377,7 +377,7 @@ export function OrganizerDoorSalesManager({ events }: { events: DoorSaleEvent[] 
           {sale.status === "pending" ? (
             <p className="mt-5 flex items-center justify-center gap-2 text-xs text-white/45">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Aguardando webhook e atualizando automaticamente…
+              Aguardando confirmação do pagamento…
             </p>
           ) : null}
         </div>

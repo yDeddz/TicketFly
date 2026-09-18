@@ -106,3 +106,13 @@ export async function refundTicketLocally(args: {
     paymentId,
   };
 }
+
+export function refundResultMessage(result: { partial: boolean; providerRefunded: boolean }) {
+  if (result.partial) {
+    return "Ingresso cancelado, mas o estorno automático falhou. Confira o pagamento na conta de recebimento.";
+  }
+  if (result.providerRefunded) {
+    return "Reembolso processado. O valor será estornado ao comprador.";
+  }
+  return "Reembolso registrado. O ingresso foi cancelado.";
+}

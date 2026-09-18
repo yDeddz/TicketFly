@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CreditCard, Heart, Sparkles } from "lucide-react";
+import { Heart, Sparkles } from "lucide-react";
 
 import { PurchaseHistory } from "@/components/purchase-history";
 import { QuickAction } from "@/components/quick-action";
@@ -205,7 +205,7 @@ export default async function MyTicketsPage() {
           <SectionTitle
             eyebrow="Prontos para uso"
             title="Ingressos ativos"
-            description="QR dinâmico, download e Wallet. Toque em abrir se sair da página de compra."
+            description="Mostre o QR Code na entrada. Você também pode baixar o ingresso ou salvar na Wallet."
           />
           {ticketsError ? (
             <div className="surface rounded-2xl p-8 text-center">
@@ -213,7 +213,7 @@ export default async function MyTicketsPage() {
             </div>
           ) : tickets.length === 0 ? (
             <div className="surface rounded-2xl p-8 text-center">
-              <p className="text-white/70">Você ainda não tem ingressos pagos.</p>
+              <p className="text-white/70">Você ainda não tem ingressos.</p>
               <Link href="/eventos" className="neon-button btn mt-4 inline-flex h-11 px-5 text-sm">
                 Explorar eventos
               </Link>
@@ -287,16 +287,6 @@ export default async function MyTicketsPage() {
                 </ul>
               </section>
             ) : null}
-
-            <section className="surface space-y-4 rounded-2xl p-5">
-              <h3 className="flex items-center gap-2 font-semibold text-white">
-                <CreditCard className="h-4 w-4 text-[#ff1493]" aria-hidden />
-                Pagamento
-              </h3>
-              <p className="text-sm leading-6 text-white/55">
-                Pix e cartão entram no checkout de cada compra. A TicketFly não guarda cartão no painel.
-              </p>
-            </section>
 
             <QuickAction
               icon={Sparkles}
