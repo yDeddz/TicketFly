@@ -145,7 +145,7 @@ export const faqData: FAQData = {
     {
       question: "Quanto tempo leva para publicar um evento?",
       answer:
-        "Depois da parceria aprovada, o cadastro no painel é rápido. A publicação depende da ficha completa e da liberação do recebimento pela TicketFly.",
+        "Depois da parceria aprovada, o cadastro no painel é rápido. A publicação depende da ficha completa.",
     },
     {
       question: "Quais tipos de eventos posso cadastrar?",
@@ -177,7 +177,7 @@ export const faqData: FAQData = {
     {
       question: "Como funciona a taxa da TicketFly?",
       answer:
-        "Há uma taxa de serviço sobre o valor do ingresso, com percentuais por faixa de preço definidos no contrato. Parte dessa taxa pode ser compartilhada com o parceiro, conforme a negociação.",
+        "A TicketFly desconta as taxas de processamento e divide a taxa de serviço 50% para a casa e 50% para a TicketFly, conforme o percentual do contrato. Detalhes ficam em Taxas, no painel do organizador.",
     },
   ],
   checkin: [
@@ -233,7 +233,7 @@ export const faqData: FAQData = {
     {
       question: "Quando recebo o repasse das vendas?",
       answer:
-        "A TicketFly faz o repasse do valor líquido em até 48 horas úteis após a venda aprovada. A taxa de serviço e o processamento (Pix 0,99% sem tarifa fixa, cartão à vista) são descontados na liquidação, conforme o contrato.",
+        "A TicketFly faz o repasse do valor líquido em até 48 horas úteis após a venda aprovada. As taxas de processamento são descontadas e a taxa de serviço é dividida 50% / 50%.",
     },
   ],
   alteracoes: [

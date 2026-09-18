@@ -48,10 +48,11 @@ export default async function OrganizerPaymentsPage() {
   return (
     <div className="grid gap-6">
       <div>
-        <h2 className="text-2xl font-black">Pagamentos e recebimento</h2>
+        <h2 className="text-2xl font-black">Pagamentos</h2>
         <p className="mt-1 text-sm text-[#c9aabc]">
-          A TicketFly faz o repasse em até <strong className="text-white">48 horas úteis</strong> após a venda
-          aprovada. Detalhes das tarifas em{" "}
+          A TicketFly desconta as taxas de processamento, divide a taxa de serviço{" "}
+          <strong className="text-white">50% / 50%</strong> e faz o repasse em até{" "}
+          <strong className="text-white">48 horas úteis</strong>. Veja o detalhe em{" "}
           <Link href="/organizador/taxas" className="font-bold text-white underline">
             Taxas
           </Link>
@@ -64,16 +65,16 @@ export default async function OrganizerPaymentsPage() {
           <p className="text-xs font-bold uppercase tracking-wide text-white/45">Prazo de repasse</p>
           <p className="mt-2 text-2xl font-black text-emerald-300">48 horas úteis</p>
           <p className="mt-2 text-sm text-white/50">
-            O líquido cai na conta cadastrada pela operação TicketFly. Você não precisa conectar nenhuma conta de
-            pagamento.
+            Depois da venda aprovada, a TicketFly deposita o líquido na conta da casa.
           </p>
         </div>
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-white/45">Contrato de taxa</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-white/45">Divisão da taxa</p>
           <ul className="mt-3 grid gap-2 text-sm text-[#c9aabc]">
-            <li>Taxa de serviço por checkout: {organizer.fee_percent_upto_threshold ?? 12}%</li>
+            <li>Taxa de serviço: {organizer.fee_percent_upto_threshold ?? 12}%</li>
             <li>
-              Split da taxa: você {partnerShare}% · Ticket Fly {organizer.service_fee_platform_share_percent}%
+              Após descontar as taxas de processamento: você {partnerShare}% · TicketFly{" "}
+              {organizer.service_fee_platform_share_percent}%
             </li>
           </ul>
         </div>

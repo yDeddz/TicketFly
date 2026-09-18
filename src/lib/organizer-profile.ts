@@ -50,7 +50,7 @@ export function organizerReceivingReady(organizer: OrganizerReceivingFields) {
 }
 
 export const ORGANIZER_RECEIVING_NOT_READY_MESSAGE =
-  "A TicketFly ainda está liberando o recebimento da casa. Complete o Perfil se faltar algum dado.";
+  "A TicketFly ainda não liberou esta casa para vender.";
 
 export function connectionStatusLabel(status: string | null | undefined) {
   switch (status) {

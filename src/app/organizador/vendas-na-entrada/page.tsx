@@ -69,17 +69,15 @@ export default async function DoorSalesPage() {
         </p>
         <h2 className="mt-2 text-3xl font-black">Venda presencial</h2>
         <p className="mt-2 max-w-2xl text-sm text-[#c9aabc]">
-          Escolha o ingresso, cadastre o comprador e gere PIX ou link seguro de cartão em
-          segundos.
+          Escolha o ingresso, cadastre o comprador e envie o pagamento em segundos.
         </p>
       </div>
 
       {!pagarmeReady ? (
         <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5">
-          <h3 className="font-black text-amber-100">Recebimento em liberação</h3>
+          <h3 className="font-black text-amber-100">Bilheteria ainda não disponível</h3>
           <p className="mt-2 text-sm text-amber-100/75">
-            A venda presencial libera quando a TicketFly confirmar o recebimento da casa. O repasse das vendas online
-            segue em 48 horas úteis.
+            Fale com a TicketFly para liberar a venda presencial nesta casa.
           </p>
         </div>
       ) : (

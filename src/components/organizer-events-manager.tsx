@@ -491,7 +491,7 @@ export function OrganizerEventsManager({
         description={
           pendingAction?.status === "published"
             ? !paymentsReady
-              ? "A TicketFly ainda está liberando o recebimento desta casa."
+              ? "A TicketFly ainda não liberou esta casa para vender."
               : (events.find((item) => item.id === pendingAction.id)?.ticket_batches.filter((b) => b.is_active).length ?? 0) === 0
                 ? "Este evento ainda não tem lote ativo."
                 : "O evento ficará visível na vitrine e poderá receber compras imediatamente."
