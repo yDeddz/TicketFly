@@ -145,7 +145,7 @@ export const faqData: FAQData = {
     {
       question: "Quanto tempo leva para publicar um evento?",
       answer:
-        "Depois da parceria aprovada, o cadastro no painel é rápido. A publicação depende da ficha completa e do cadastro do recebedor Stone pela TicketFly.",
+        "Depois da parceria aprovada, o cadastro no painel é rápido. A publicação depende da ficha completa e da liberação do recebimento pela TicketFly.",
     },
     {
       question: "Quais tipos de eventos posso cadastrar?",
@@ -233,7 +233,7 @@ export const faqData: FAQData = {
     {
       question: "Quando recebo o repasse das vendas?",
       answer:
-        "A TicketFly cadastra você como recebedor na Stone com os dados da ficha. O valor líquido do ingresso segue para essa conta, conforme a liquidação. A taxa de serviço é tratada à parte, de acordo com o contrato de parceria.",
+        "A TicketFly faz o repasse do valor líquido em até 48 horas úteis após a venda aprovada. A taxa de serviço e o processamento (Pix 0,99% sem tarifa fixa, cartão à vista) são descontados na liquidação, conforme o contrato.",
     },
   ],
   alteracoes: [

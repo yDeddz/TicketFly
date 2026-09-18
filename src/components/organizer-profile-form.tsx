@@ -15,13 +15,13 @@ export type OrganizerProfileFormValues = {
   document: string | null;
   phone: string | null;
   city: string | null;
-  address: string | null;
-  address_number: string | null;
-  complement: string | null;
-  province: string | null;
-  postal_code: string | null;
-  birth_date: string | null;
-  company_type: string | null;
+  address?: string | null;
+  address_number?: string | null;
+  complement?: string | null;
+  province?: string | null;
+  postal_code?: string | null;
+  birth_date?: string | null;
+  company_type?: string | null;
 };
 
 export function OrganizerProfileForm({
@@ -114,7 +114,7 @@ export function OrganizerProfileForm({
         return;
       }
       setTone("success");
-      setMessage("Ficha salva. A TicketFly usa estes dados para cadastrar o recebedor na Stone.");
+      setMessage("Perfil salvo.");
       router.refresh();
     } catch {
       setTone("error");
@@ -128,11 +128,8 @@ export function OrganizerProfileForm({
     <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5 md:grid-cols-2">
       {compact ? null : (
         <div className="md:col-span-2">
-          <h2 className="text-xl font-black">Ficha da casa</h2>
-          <p className="mt-1 text-sm text-[#c9aabc]">
-            A TicketFly cadastra você como recebedor na Stone com estes dados. Você não precisa abrir conta nem
-            conectar nada.
-          </p>
+          <h2 className="text-xl font-black">Dados da casa</h2>
+          <p className="mt-1 text-sm text-[#c9aabc]">Documento, telefone e endereço da operação.</p>
         </div>
       )}
 

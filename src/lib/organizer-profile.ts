@@ -32,7 +32,7 @@ export function organizerDocumentKind(document: string | null | undefined): "cpf
   return "invalid";
 }
 
-export function isOrganizerProfileComplete(profile: OrganizerProfileFields) {
+export function isOrganizerProfileComplete(profile: Partial<OrganizerProfileFields>) {
   const kind = organizerDocumentKind(profile.document);
   if (kind === "invalid") return false;
   if (!profile.trade_name?.trim() || !profile.legal_name?.trim()) return false;
@@ -50,7 +50,7 @@ export function organizerReceivingReady(organizer: OrganizerReceivingFields) {
 }
 
 export const ORGANIZER_RECEIVING_NOT_READY_MESSAGE =
-  "Recebedor Stone ainda não cadastrado. Complete a ficha em Perfil e aguarde a TicketFly.";
+  "A TicketFly ainda está liberando o recebimento da casa. Complete o Perfil se faltar algum dado.";
 
 export function connectionStatusLabel(status: string | null | undefined) {
   switch (status) {

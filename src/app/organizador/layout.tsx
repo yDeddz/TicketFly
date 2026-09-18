@@ -5,7 +5,7 @@ import { DashboardNav } from "@/components/dashboard-nav";
 import { OrganizerProfileForm } from "@/components/organizer-profile-form";
 import { organizerStatusLabel } from "@/components/status-badges";
 import { loadOrganizerByUserId } from "@/lib/auth-guards";
-import { isOrganizerProfileComplete, organizerReceivingReady } from "@/lib/organizer-profile";
+import { isOrganizerProfileComplete } from "@/lib/organizer-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const nav = [
@@ -18,6 +18,7 @@ const nav = [
   { href: "/organizador/ingressos", label: "Ingressos / QR" },
   { href: "/organizador/entradas", label: "Gestão de entrada" },
   { href: "/organizador/pagamentos", label: "Pagamentos" },
+  { href: "/organizador/taxas", label: "Taxas" },
   { href: "/organizador/reembolsos", label: "Reembolsos" },
   { href: "/organizador/webhooks", label: "Webhooks" },
 ];
@@ -78,7 +79,6 @@ export default async function OrganizerLayout({ children }: { children: React.Re
     );
   }
 
-  const paymentsReady = organizerReceivingReady(organizer);
   const profileComplete = isOrganizerProfileComplete(organizer);
 
   return (
@@ -93,16 +93,11 @@ export default async function OrganizerLayout({ children }: { children: React.Re
       </div>
       {!profileComplete ? (
         <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          Ficha incompleta. Em{" "}
+          Complete documento, endereço e telefone em{" "}
           <Link href="/organizador/perfil" className="font-bold underline">
             Perfil
-          </Link>{" "}
-          complete documento, endereço e telefone — a TicketFly cadastra o recebedor Stone com esses dados.
-        </p>
-      ) : !paymentsReady ? (
-        <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          A administração TicketFly ainda está cadastrando seu recebedor na Stone com os dados da ficha. Você não
-          precisa abrir conta nem conectar nada.
+          </Link>
+          .
         </p>
       ) : null}
       <div className="mb-8">

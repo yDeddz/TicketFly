@@ -16,9 +16,7 @@ export default async function OrganizerPaymentsPage() {
   const admin = createAdminClient();
   const { data: organizer } = await admin
     .from("organizers")
-    .select(
-      "id,trade_name,pagarme_connection_status,service_fee_platform_share_percent,fee_percent_upto_threshold",
-    )
+    .select("id,service_fee_platform_share_percent,fee_percent_upto_threshold")
     .eq("user_id", user.id)
     .single();
 
@@ -46,44 +44,34 @@ export default async function OrganizerPaymentsPage() {
   }
 
   const partnerShare = 100 - Number(organizer.service_fee_platform_share_percent ?? 50);
-  const receivingReady = organizer.pagarme_connection_status === "connected";
 
   return (
     <div className="grid gap-6">
       <div>
         <h2 className="text-2xl font-black">Pagamentos e recebimento</h2>
         <p className="mt-1 text-sm text-[#c9aabc]">
-          A TicketFly cadastra você como recebedor na Stone com os dados da ficha. Aqui você só acompanha
-          faturamento e repasses — não precisa abrir conta nem conectar nada.
+          A TicketFly faz o repasse em até <strong className="text-white">48 horas úteis</strong> após a venda
+          aprovada. Detalhes das tarifas em{" "}
+          <Link href="/organizador/taxas" className="font-bold text-white underline">
+            Taxas
+          </Link>
+          .
         </p>
       </div>
 
       <div className="grid gap-4 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5 md:grid-cols-2">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-white/45">Recebimento Stone</p>
-          <p className={`mt-2 text-2xl font-black ${receivingReady ? "text-emerald-300" : "text-amber-200"}`}>
-            {receivingReady ? "Configurado" : "Em configuração"}
-          </p>
+          <p className="text-xs font-bold uppercase tracking-wide text-white/45">Prazo de repasse</p>
+          <p className="mt-2 text-2xl font-black text-emerald-300">48 horas úteis</p>
           <p className="mt-2 text-sm text-white/50">
-            {receivingReady ? (
-              "O recebedor Stone já está cadastrado pela administração TicketFly a partir da sua ficha."
-            ) : (
-              <>
-                A administração TicketFly cadastra o recebedor na Stone com os dados do{" "}
-                <Link href="/organizador/perfil" className="font-bold text-white/80 underline">
-                  Perfil
-                </Link>
-                . Você não abre conta nem conecta nada.
-              </>
-            )}
+            O líquido cai na conta cadastrada pela operação TicketFly. Você não precisa conectar nenhuma conta de
+            pagamento.
           </p>
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-white/45">Contrato de taxa</p>
           <ul className="mt-3 grid gap-2 text-sm text-[#c9aabc]">
-            <li>
-              Taxa de serviço por checkout: {organizer.fee_percent_upto_threshold ?? 12}%
-            </li>
+            <li>Taxa de serviço por checkout: {organizer.fee_percent_upto_threshold ?? 12}%</li>
             <li>
               Split da taxa: você {partnerShare}% · Ticket Fly {organizer.service_fee_platform_share_percent}%
             </li>
@@ -109,34 +97,6 @@ export default async function OrganizerPaymentsPage() {
           <p className="mt-2 text-2xl font-black">{formatCurrency(paidFeeShare)}</p>
         </div>
       </div>
-
-      <section className="rounded-2xl border border-white/10 bg-[#120410] p-5">
-        <h3 className="text-lg font-black">Tarifas de processamento Stone</h3>
-        <p className="mt-1 text-sm text-white/50">
-          Condições comerciais da conta Stone. No TicketFly, cartão é aceito somente à vista (1x).
-        </p>
-        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <FeeCard label="Pix" value="0,99%" detail="por transação" />
-          <FeeCard label="Cartão 1x" value="a partir de 3,79%" detail="por transação" />
-          <FeeCard label="Processamento" value="R$ 0,50" detail="por transação aprovada" />
-          <FeeCard label="Antifraude" value="R$ 0,40" detail="por transação de crédito" />
-          <FeeCard label="Transferência" value="R$ 3,67" detail="por transferência para outra conta" />
-          <FeeCard label="Antecipação" value="3,11%" detail="antecipação automática ativa" />
-        </div>
-        <p className="mt-4 text-xs text-white/40">
-          As tarifas são cobradas pela Stone e podem ser atualizadas conforme o contrato da conta.
-        </p>
-      </section>
-    </div>
-  );
-}
-
-function FeeCard({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-white/45">{label}</p>
-      <p className="mt-2 text-lg font-black text-white">{value}</p>
-      <p className="mt-1 text-xs text-white/45">{detail}</p>
     </div>
   );
 }

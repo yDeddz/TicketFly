@@ -4,7 +4,7 @@ import { OpsSetupList } from "@/components/ops-setup-list";
 import { StatCard } from "@/components/stat-card";
 import { requireApprovedOrganizer } from "@/lib/auth-guards";
 import { formatCurrency } from "@/lib/format";
-import { isOrganizerProfileComplete, organizerReceivingReady } from "@/lib/organizer-profile";
+import { isOrganizerProfileComplete } from "@/lib/organizer-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -74,7 +74,6 @@ export default async function OrganizerDashboardPage() {
 
   const live = events?.filter((event) => event.status === "published").length ?? 0;
   const hasBatch = (events ?? []).some((event) => (event.ticket_batches?.length ?? 0) > 0);
-  const paymentsReady = organizerReceivingReady(organizer);
   const profileComplete = isOrganizerProfileComplete(organizer);
 
   return (
@@ -84,18 +83,10 @@ export default async function OrganizerDashboardPage() {
         description="Feche estes itens antes de abrir a venda ao público."
         items={[
           {
-            label: "Completar ficha da casa",
+            label: "Completar perfil da casa",
             done: profileComplete,
             href: "/organizador/perfil",
             hint: profileComplete ? "Documento e endereço ok" : "CPF/CNPJ, CEP e telefone",
-          },
-          {
-            label: "Recebimento Stone configurado pela TicketFly",
-            done: paymentsReady,
-            href: "/organizador/pagamentos",
-            hint: paymentsReady
-              ? "Split automático ativo"
-              : "A administração está cadastrando o recebedor na Stone",
           },
           {
             label: "Criar evento",

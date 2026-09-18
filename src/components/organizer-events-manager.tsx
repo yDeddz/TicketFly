@@ -47,11 +47,9 @@ const statusLabels: Record<string, string> = {
 export function OrganizerEventsManager({
   events,
   paymentsReady,
-  profileComplete,
 }: {
   events: EventItem[];
   paymentsReady: boolean;
-  profileComplete: boolean;
 }) {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
@@ -292,9 +290,7 @@ export function OrganizerEventsManager({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-black">Eventos</h2>
-          <p className="mt-1 text-sm text-[#c9aabc]">
-            Crie a noite, o primeiro lote e publique quando o recebedor Stone estiver cadastrado.
-          </p>
+          <p className="mt-1 text-sm text-[#c9aabc]">Crie a noite, o primeiro lote e publique na vitrine.</p>
         </div>
         <button
           type="button"
@@ -305,27 +301,6 @@ export function OrganizerEventsManager({
           Novo evento
         </button>
       </div>
-
-      {!paymentsReady ? (
-        <AlertBanner tone="warning">
-          {profileComplete ? (
-            <>
-              A publicação fica bloqueada até a TicketFly cadastrar seu recebedor na Stone com os dados da ficha.{" "}
-              <Link href="/organizador/pagamentos" className="font-bold underline">
-                Ver status do recebimento
-              </Link>
-            </>
-          ) : (
-            <>
-              Complete a ficha em Perfil. A TicketFly cadastra você como recebedor na Stone com esses dados — sem isso a
-              publicação fica bloqueada.{" "}
-              <Link href="/organizador/perfil" className="font-bold underline">
-                Completar ficha
-              </Link>
-            </>
-          )}
-        </AlertBanner>
-      ) : null}
 
       {message ? <AlertBanner tone={messageTone}>{message}</AlertBanner> : null}
 
@@ -377,8 +352,7 @@ export function OrganizerEventsManager({
 
       {events.length === 0 && !showCreate ? (
         <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-white/60">
-          Nenhum evento ainda. Crie o primeiro com um lote; a publicação só libera depois que a TicketFly cadastrar o
-          recebedor Stone.
+          Nenhum evento ainda. Crie o primeiro com um lote.
         </p>
       ) : null}
 
@@ -517,7 +491,7 @@ export function OrganizerEventsManager({
         description={
           pendingAction?.status === "published"
             ? !paymentsReady
-              ? "O recebedor Stone ainda não está cadastrado. A TicketFly faz isso com os dados da sua ficha."
+              ? "A TicketFly ainda está liberando o recebimento desta casa."
               : (events.find((item) => item.id === pendingAction.id)?.ticket_batches.filter((b) => b.is_active).length ?? 0) === 0
                 ? "Este evento ainda não tem lote ativo."
                 : "O evento ficará visível na vitrine e poderá receber compras imediatamente."

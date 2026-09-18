@@ -344,7 +344,7 @@ export function OrganizerDoorSalesManager({ events }: { events: DoorSaleEvent[] 
               <CreditCard className="mx-auto h-12 w-12 text-[#ff7ec8]" />
               <h3 className="text-xl font-black">Link de cartão pronto</h3>
               <p className="text-sm text-white/55">
-                Envie ao comprador. Os dados do cartão são preenchidos somente no checkout seguro da Stone.
+                Envie ao comprador. Os dados do cartão são preenchidos somente no checkout seguro.
               </p>
               <div className="flex flex-col justify-center gap-2 sm:flex-row">
                 <button
@@ -456,7 +456,7 @@ export function OrganizerDoorSalesManager({ events }: { events: DoorSaleEvent[] 
           <div>
             <h3 className="text-lg font-black">3. Dados do comprador</h3>
             <p className="mt-1 text-xs text-white/45">
-              O CPF vai somente para o pagamento na Stone e não fica salvo na TicketFly.
+              O CPF vai somente para o pagamento e não fica salvo na TicketFly.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
