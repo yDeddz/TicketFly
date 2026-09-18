@@ -1,6 +1,6 @@
 import { OrganizerEventsManager } from "@/components/organizer-events-manager";
 import { requireApprovedOrganizer } from "@/lib/auth-guards";
-import { organizerReceivingReady } from "@/lib/organizer-profile";
+import { isOrganizerProfileComplete, organizerReceivingReady } from "@/lib/organizer-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,7 @@ export default async function OrganizerEventsPage() {
     <OrganizerEventsManager
       events={events ?? []}
       paymentsReady={organizerReceivingReady(auth.organizer)}
+      profileComplete={isOrganizerProfileComplete(auth.organizer)}
     />
   );
 }

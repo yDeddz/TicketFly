@@ -1,6 +1,6 @@
 import { apiError, apiOk, createRequestId } from "@/lib/api-error";
 import { organizerAuthError, requireApprovedOrganizer } from "@/lib/auth-guards";
-import { organizerReceivingReady } from "@/lib/organizer-profile";
+import { ORGANIZER_RECEIVING_NOT_READY_MESSAGE, organizerReceivingReady } from "@/lib/organizer-profile";
 import { notifyEventWebhook } from "@/lib/organizer-webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { organizerEventUpdateSchema } from "@/lib/validators";
@@ -41,7 +41,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (input.data.status === "published") {
     if (auth.organizer && !auth.isAdmin && !organizerReceivingReady(auth.organizer)) {
       return apiError(409, {
-        message: "Conecte Asaas ou Mercado Pago antes de publicar",
+        message: ORGANIZER_RECEIVING_NOT_READY_MESSAGE,
         code: "PAYMENTS_NOT_READY",
         requestId,
       });

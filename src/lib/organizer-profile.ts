@@ -49,6 +49,9 @@ export function organizerReceivingReady(organizer: OrganizerReceivingFields) {
   return organizer.pagarme_connection_status === "connected";
 }
 
+export const ORGANIZER_RECEIVING_NOT_READY_MESSAGE =
+  "Recebedor Stone ainda não cadastrado. Complete a ficha em Perfil e aguarde a TicketFly.";
+
 export function connectionStatusLabel(status: string | null | undefined) {
   switch (status) {
     case "connected":

@@ -4,8 +4,8 @@ import { BrandLogo } from "@/components/brand-logo";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { OrganizerProfileForm } from "@/components/organizer-profile-form";
 import { organizerStatusLabel } from "@/components/status-badges";
-import { ORGANIZER_PROFILE_SELECT, isOrganizerProfileComplete, organizerReceivingReady } from "@/lib/organizer-profile";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { loadOrganizerByUserId } from "@/lib/auth-guards";
+import { isOrganizerProfileComplete, organizerReceivingReady } from "@/lib/organizer-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const nav = [
@@ -47,12 +47,7 @@ export default async function OrganizerLayout({ children }: { children: React.Re
     );
   }
 
-  const admin = createAdminClient();
-  const { data: organizer } = await admin
-    .from("organizers")
-    .select(ORGANIZER_PROFILE_SELECT)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const organizer = await loadOrganizerByUserId(user.id);
 
   if (!organizer) {
     return (
@@ -98,16 +93,16 @@ export default async function OrganizerLayout({ children }: { children: React.Re
       </div>
       {!profileComplete ? (
         <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          Perfil fiscal incompleto. Em{" "}
+          Ficha incompleta. Em{" "}
           <Link href="/organizador/perfil" className="font-bold underline">
             Perfil
           </Link>{" "}
-          complete documento, endereço e telefone.
+          complete documento, endereço e telefone — a TicketFly cadastra o recebedor Stone com esses dados.
         </p>
       ) : !paymentsReady ? (
         <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          A administração TicketFly ainda está configurando seu recebedor Stone. Você não
-          precisa cadastrar ou conectar nenhuma conta.
+          A administração TicketFly ainda está cadastrando seu recebedor na Stone com os dados da ficha. Você não
+          precisa abrir conta nem conectar nada.
         </p>
       ) : null}
       <div className="mb-8">

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatCurrency } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -51,8 +53,8 @@ export default async function OrganizerPaymentsPage() {
       <div>
         <h2 className="text-2xl font-black">Pagamentos e recebimento</h2>
         <p className="mt-1 text-sm text-[#c9aabc]">
-          A TicketFly administra o recebimento pela Pagar.me/Stone. Você acompanha aqui apenas
-          faturamento e repasses.
+          A TicketFly cadastra você como recebedor na Stone com os dados da ficha. Aqui você só acompanha
+          faturamento e repasses — não precisa abrir conta nem conectar nada.
         </p>
       </div>
 
@@ -63,7 +65,17 @@ export default async function OrganizerPaymentsPage() {
             {receivingReady ? "Configurado" : "Em configuração"}
           </p>
           <p className="mt-2 text-sm text-white/50">
-            Dados bancários e recebedor são gerenciados somente pela administração TicketFly.
+            {receivingReady ? (
+              "O recebedor Stone já está cadastrado pela administração TicketFly a partir da sua ficha."
+            ) : (
+              <>
+                A administração TicketFly cadastra o recebedor na Stone com os dados do{" "}
+                <Link href="/organizador/perfil" className="font-bold text-white/80 underline">
+                  Perfil
+                </Link>
+                . Você não abre conta nem conecta nada.
+              </>
+            )}
           </p>
         </div>
         <div>
@@ -99,7 +111,7 @@ export default async function OrganizerPaymentsPage() {
       </div>
 
       <section className="rounded-2xl border border-white/10 bg-[#120410] p-5">
-        <h3 className="text-lg font-black">Tarifas de processamento Pagar.me</h3>
+        <h3 className="text-lg font-black">Tarifas de processamento Stone</h3>
         <p className="mt-1 text-sm text-white/50">
           Condições comerciais da conta Stone. No TicketFly, cartão é aceito somente à vista (1x).
         </p>
@@ -112,7 +124,7 @@ export default async function OrganizerPaymentsPage() {
           <FeeCard label="Antecipação" value="3,11%" detail="antecipação automática ativa" />
         </div>
         <p className="mt-4 text-xs text-white/40">
-          As tarifas são cobradas pela Pagar.me/Stone e podem ser atualizadas conforme o contrato da conta.
+          As tarifas são cobradas pela Stone e podem ser atualizadas conforme o contrato da conta.
         </p>
       </section>
     </div>

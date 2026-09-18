@@ -152,7 +152,7 @@ export function DoorPaymentClient({
           <div>
             <h2 className="text-2xl font-black">Pagamento com cartão</h2>
             <p className="mt-2 text-sm text-white/60">
-              Os dados do cartão serão preenchidos no ambiente seguro do Asaas.
+              Os dados do cartão serão preenchidos no ambiente seguro da Stone.
             </p>
           </div>
           {state.checkoutUrl ? (

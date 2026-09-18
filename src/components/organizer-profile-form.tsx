@@ -114,7 +114,7 @@ export function OrganizerProfileForm({
         return;
       }
       setTone("success");
-      setMessage("Perfil salvo. Esses dados serão usados no Asaas.");
+      setMessage("Ficha salva. A TicketFly usa estes dados para cadastrar o recebedor na Stone.");
       router.refresh();
     } catch {
       setTone("error");
@@ -128,9 +128,10 @@ export function OrganizerProfileForm({
     <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5 md:grid-cols-2">
       {compact ? null : (
         <div className="md:col-span-2">
-          <h2 className="text-xl font-black">Perfil fiscal</h2>
+          <h2 className="text-xl font-black">Ficha da casa</h2>
           <p className="mt-1 text-sm text-[#c9aabc]">
-            Um cadastro só: a TicketFly e o Asaas usam os mesmos dados da casa.
+            A TicketFly cadastra você como recebedor na Stone com estes dados. Você não precisa abrir conta nem
+            conectar nada.
           </p>
         </div>
       )}
@@ -142,7 +143,7 @@ export function OrganizerProfileForm({
       ) : null}
 
       <label className="grid gap-1 text-sm">
-        Nome fantasia
+        Nome da empresa
         <input
           required
           value={form.tradeName}
@@ -160,7 +161,7 @@ export function OrganizerProfileForm({
         />
       </label>
       <label className="grid gap-1 text-sm">
-        CPF ou CNPJ
+        Número do documento (CPF ou CNPJ)
         <input
           required
           value={form.document}
@@ -169,7 +170,7 @@ export function OrganizerProfileForm({
         />
       </label>
       <label className="grid gap-1 text-sm">
-        Celular / WhatsApp
+        Telefone
         <input
           required
           value={form.phone}
@@ -227,12 +228,13 @@ export function OrganizerProfileForm({
         </span>
       </label>
       <label className="grid gap-1 text-sm md:col-span-2">
-        Endereço
+        Logradouro
         <input
           required
           value={form.address}
           onChange={(e) => setForm({ ...form, address: e.target.value })}
           className="h-11 rounded-md border border-white/10 bg-[#0d0b10] px-3"
+          placeholder="Rua, avenida ou similar"
         />
       </label>
       <label className="grid gap-1 text-sm">

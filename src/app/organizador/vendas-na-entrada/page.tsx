@@ -78,8 +78,8 @@ export default async function DoorSalesPage() {
         <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5">
           <h3 className="font-black text-amber-100">Recebimento Stone em configuração</h3>
           <p className="mt-2 text-sm text-amber-100/75">
-            A administração TicketFly cadastra o recebedor. Você não precisa acessar ou
-            configurar a Pagar.me.
+            A administração TicketFly cadastra o recebedor na Stone com os dados da ficha. Você não precisa acessar
+            nem configurar a Stone.
           </p>
         </div>
       ) : (

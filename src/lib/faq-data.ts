@@ -145,7 +145,7 @@ export const faqData: FAQData = {
     {
       question: "Quanto tempo leva para publicar um evento?",
       answer:
-        "Depois da parceria aprovada, o cadastro no painel é rápido. A publicação depende do preenchimento completo (data, local, lotes) e da liberação do status do evento pela operação.",
+        "Depois da parceria aprovada, o cadastro no painel é rápido. A publicação depende da ficha completa e do cadastro do recebedor Stone pela TicketFly.",
     },
     {
       question: "Quais tipos de eventos posso cadastrar?",
@@ -233,7 +233,7 @@ export const faqData: FAQData = {
     {
       question: "Quando recebo o repasse das vendas?",
       answer:
-        "O valor líquido do ingresso segue para a conta de recebimento do organizador, conforme a liquidação. A taxa de serviço é tratada à parte, de acordo com o contrato de parceria.",
+        "A TicketFly cadastra você como recebedor na Stone com os dados da ficha. O valor líquido do ingresso segue para essa conta, conforme a liquidação. A taxa de serviço é tratada à parte, de acordo com o contrato de parceria.",
     },
   ],
   alteracoes: [

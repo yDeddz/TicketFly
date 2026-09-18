@@ -84,7 +84,7 @@ export default async function OrganizerDashboardPage() {
         description="Feche estes itens antes de abrir a venda ao público."
         items={[
           {
-            label: "Completar perfil fiscal",
+            label: "Completar ficha da casa",
             done: profileComplete,
             href: "/organizador/perfil",
             hint: profileComplete ? "Documento e endereço ok" : "CPF/CNPJ, CEP e telefone",
@@ -95,7 +95,7 @@ export default async function OrganizerDashboardPage() {
             href: "/organizador/pagamentos",
             hint: paymentsReady
               ? "Split automático ativo"
-              : "A administração está cadastrando o recebedor",
+              : "A administração está cadastrando o recebedor na Stone",
           },
           {
             label: "Criar evento",

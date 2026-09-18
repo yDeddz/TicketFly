@@ -28,8 +28,8 @@ export default async function OrganizerProfilePage() {
         <h2 className="text-2xl font-black">Perfil da casa</h2>
         <p className="mt-1 text-sm text-[#c9aabc]">
           {complete
-            ? "Cadastro fiscal completo — o Asaas usa estes dados."
-            : "Falta endereço, documento ou telefone. Sem isso a subconta Asaas não abre."}
+            ? "Ficha completa — a TicketFly usa estes dados para cadastrar o recebedor na Stone."
+            : "Falta documento, endereço ou telefone. Sem a ficha completa a TicketFly não cadastra o recebedor na Stone."}
         </p>
       </div>
       <OrganizerProfileForm organizer={organizer} />

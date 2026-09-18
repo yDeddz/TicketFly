@@ -23,6 +23,21 @@ export async function requireAdmin() {
 }
 
 const organizerSelect = ORGANIZER_PROFILE_SELECT;
+const organizerCoreSelect =
+  "id,status,trade_name,legal_name,document,phone,city,partnership_notes,pagarme_connection_status,primary_payment_provider,fee_threshold_cents,fee_percent_upto_threshold,fee_percent_above_threshold,service_fee_platform_share_percent";
+
+export async function loadOrganizerByUserId(userId: string) {
+  const admin = createAdminClient();
+  const full = await admin.from("organizers").select(organizerSelect).eq("user_id", userId).maybeSingle();
+  if (!full.error) return full.data;
+
+  const core = await admin.from("organizers").select(organizerCoreSelect).eq("user_id", userId).maybeSingle();
+  if (core.error) {
+    console.error("[organizer] failed to load contract", full.error.message, core.error.message);
+    return null;
+  }
+  return core.data;
+}
 
 export async function requireOrganizerAccount(options?: { allowPending?: boolean }) {
   const supabase = await createSupabaseServerClient();
@@ -44,11 +59,7 @@ export async function requireOrganizerAccount(options?: { allowPending?: boolean
   const { data: profile } = await admin.from("users").select("role").eq("id", user.id).single();
   const isAdmin = profile?.role === "admin";
 
-  const { data: organizer } = await admin
-    .from("organizers")
-    .select(organizerSelect)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const organizer = await loadOrganizerByUserId(user.id);
 
   if (isAdmin && !organizer) {
     return { error: null, status: 200 as const, user, organizer: null, isAdmin: true };
