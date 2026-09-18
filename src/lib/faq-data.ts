@@ -5,12 +5,16 @@ export const faqCategories: FAQCategories = {
   "meus-ingressos": "Meus Ingressos",
   pagamentos: "Pagamentos e Reembolsos",
   seguranca: "Segurança da Compra",
-  "criar-eventos": "Criar Eventos",
-  "vender-ingressos": "Vender Ingressos",
   checkin: "Check-in e Acesso",
-  organizadores: "Organizadores",
   alteracoes: "Alterações e Transferências",
   conta: "Conta e Suporte",
+};
+
+export const organizerFaqCategories: FAQCategories = {
+  "criar-eventos": "Criar Eventos",
+  "vender-ingressos": "Vender Ingressos",
+  "checkin-operacao": "Check-in na porta",
+  organizadores: "Painel do organizador",
 };
 
 export const faqData: FAQData = {
@@ -180,7 +184,7 @@ export const faqData: FAQData = {
     {
       question: "Como funciona o check-in digital?",
       answer:
-        "A equipe acessa /checkin, seleciona o evento e valida o ingresso pela câmera (QR Code) ou pelo código manual. O sistema confirma se está pago, se já foi usado ou se foi cancelado.",
+        "Na entrada, a equipe escaneia o QR Code do seu ingresso. Se estiver pago e ainda não utilizado, a entrada é liberada. Depois do check-in, o mesmo código não vale novamente.",
     },
     {
       question: "Preciso imprimir meu ingresso?",
@@ -192,10 +196,12 @@ export const faqData: FAQData = {
       answer:
         "Não. Após um check-in válido, o ingresso fica marcado como utilizado e novas tentativas retornam como já usado.",
     },
+  ],
+  "checkin-operacao": [
     {
       question: "Como validar ingressos na entrada do evento?",
       answer:
-        "Use o check-in TicketFly com login de organizador/operação: escaneie o QR ou digite o código do ingresso. O resultado aparece na hora (válido, já usado, cancelado, não pago ou não encontrado).",
+        "A equipe acessa /checkin com login de organizador ou operação, seleciona o evento e valida o ingresso pela câmera (QR Code) ou pelo código manual. O resultado aparece na hora (válido, já usado, cancelado, não pago ou não encontrado).",
     },
     {
       question: "O aplicativo de check-in funciona offline?",
@@ -306,11 +312,18 @@ export const homeFaqData: FAQData = {
     faqData.pagamentos[1]!,
   ],
   checkin: [
-    faqData.checkin[1]!,
     faqData.checkin[0]!,
+    faqData.checkin[1]!,
   ],
   conta: [
     faqData.conta[0]!,
     faqData.conta[3]!,
   ],
+};
+
+export const organizerFaqData: FAQData = {
+  "criar-eventos": faqData["criar-eventos"],
+  "vender-ingressos": faqData["vender-ingressos"],
+  "checkin-operacao": faqData["checkin-operacao"],
+  organizadores: faqData.organizadores,
 };

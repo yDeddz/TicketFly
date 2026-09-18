@@ -18,7 +18,6 @@ import { hasSupabaseConfig } from "@/lib/env";
 import { homeFaqCategories, homeFaqData } from "@/lib/faq-data";
 import { formatCurrency } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { showcaseEvents } from "@/lib/ticketfly-data";
 import type { EventWithBatches } from "@/types/domain";
 
 const collections = [
@@ -62,8 +61,7 @@ export default async function Home() {
     events = (data ?? []) as EventWithBatches[];
   }
 
-  const featured = events.length ? events : showcaseEvents;
-  const usingShowcase = events.length === 0;
+  const featured = events;
   const hero = featured[0];
   const heroPrice = hero
     ? Math.min(...hero.ticket_batches.map((batch) => batch.price_cents), Number.POSITIVE_INFINITY)
@@ -80,11 +78,6 @@ export default async function Home() {
 
   return (
     <main className="ticket-grid overflow-x-clip">
-      {usingShowcase ? (
-        <div className="relative z-10 border-b border-amber-400/25 bg-amber-400/10 px-4 py-2 text-center text-xs font-semibold text-amber-100">
-          Exibindo eventos de demonstração — publique eventos reais no painel do parceiro para substituir esta vitrine.
-        </div>
-      ) : null}
       <section className="relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -223,11 +216,17 @@ export default async function Home() {
           />
         </div>
 
-        <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {featured.slice(0, 3).map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
+        {featured.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center">
+            <p className="text-white/70">Nenhum evento publicado no momento.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {featured.slice(0, 3).map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-5 sm:pb-20 sm:pt-10 lg:px-6">

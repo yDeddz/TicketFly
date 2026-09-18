@@ -8,9 +8,7 @@ const links = [
   { href: "/eventos", label: "Eventos" },
   { href: "/eventos?categoria=shows", label: "Shows" },
   { href: "/eventos?categoria=festivais", label: "Festivais" },
-  { href: "/parceiros", label: "Parceiros" },
   { href: "/ajuda", label: "Ajuda" },
-  { href: "/checkin", label: "Check-in" },
 ];
 
 export function MobileNav({ extraLinks = [] }: { extraLinks?: { href: string; label: string }[] }) {

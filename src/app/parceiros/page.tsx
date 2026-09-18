@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 
 import { PartnerApplyForm } from "@/components/partner-apply-form";
+import { FAQ } from "@/components/ui/faq-tabs";
 import { hasSupabaseConfig } from "@/lib/env";
+import { organizerFaqCategories, organizerFaqData } from "@/lib/faq-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -169,6 +171,14 @@ export default async function PartnersPage() {
             <PartnerApplyForm />
           )}
         </div>
+      </section>
+      <section id="ajuda" className="mx-auto max-w-7xl px-4 pb-16 sm:px-5 lg:px-6">
+        <FAQ
+          title="Dúvidas para organizadores"
+          subtitle="Parceiros TicketFly"
+          categories={organizerFaqCategories}
+          faqData={organizerFaqData}
+        />
       </section>
     </main>
   );

@@ -133,9 +133,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             <Link className="hover:text-white" href="/ajuda">
               Central de Ajuda
             </Link>
-            <Link className="hover:text-white" href="/checkin">
-              Check-in
-            </Link>
           </div>
           <div>
             <strong className="text-sm text-white">Social</strong>

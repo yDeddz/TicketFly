@@ -7,7 +7,6 @@ import { DEFAULT_FEE_CONTRACT, type FeeContract } from "@/lib/fees";
 import { hasSupabaseConfig } from "@/lib/env";
 import { resolveCheckoutProvider } from "@/lib/payments";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getShowcaseEvent } from "@/lib/ticketfly-data";
 import type { EventWithBatches } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +21,6 @@ export default async function EventPage({
   const { slug } = await params;
   const query = await searchParams;
   let event: EventWithBatches | null = null;
-  let demoMode = true;
   let buyerName = "";
   let buyerEmail = "";
 
@@ -40,17 +38,11 @@ export default async function EventPage({
     ]);
 
     event = (data ?? null) as EventWithBatches | null;
-    demoMode = false;
     const user = auth.data.user;
     buyerEmail = user?.email?.trim() ?? "";
     buyerName =
       (typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "") ||
       (typeof user?.user_metadata?.name === "string" ? user.user_metadata.name.trim() : "");
-  }
-
-  if (!event) {
-    event = getShowcaseEvent(slug) ?? null;
-    demoMode = true;
   }
 
   if (!event) {
@@ -144,7 +136,6 @@ export default async function EventPage({
 
         <CheckoutForm
           batches={activeBatches}
-          demoMode={demoMode}
           feeContract={feeContract}
           initialPromoterCode={query.ref?.trim() ?? ""}
           initialCouponCode={query.cupom?.trim() ?? ""}

@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CreditCard, Heart, Plus, Sparkles } from "lucide-react";
+import { CreditCard, Heart, Sparkles } from "lucide-react";
 
-import { Badge } from "@/components/badge";
 import { PurchaseHistory } from "@/components/purchase-history";
 import { QuickAction } from "@/components/quick-action";
 import { SectionTitle } from "@/components/section-title";
@@ -14,13 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signTicketAccessToken } from "@/lib/ticket-crypto";
 import { claimTicketsForBuyer } from "@/lib/tickets/claim";
-import {
-  paymentMethods,
-  showcaseEvents,
-  type PurchaseRecord,
-  type TicketTier,
-  type WalletTicket,
-} from "@/lib/ticketfly-data";
+import { type PurchaseRecord, type TicketTier, type WalletTicket } from "@/lib/ticketfly-data";
 
 export const dynamic = "force-dynamic";
 
@@ -148,11 +141,27 @@ export default async function MyTicketsPage() {
 
   tickets.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
 
+  const { data: catalogRows } = await admin
+    .from("events")
+    .select("id,title,slug,starts_at,city,cover_image_url")
+    .eq("status", "published")
+    .order("starts_at", { ascending: true })
+    .limit(6);
+
+  const catalog = (catalogRows ?? []).map((event) => ({
+    id: event.id as string,
+    title: event.title as string,
+    slug: event.slug as string,
+    starts_at: event.starts_at as string,
+    city: (event.city as string | null) ?? "",
+    cover_image_url: (event.cover_image_url as string | null) ?? "",
+  }));
+
   const nextEvent = tickets[0];
   const invested = history.reduce((sum, item) => sum + item.amount_cents, 0);
   const ownedSlugs = new Set(tickets.map((ticket) => ticket.slug));
-  const recommended = showcaseEvents.filter((event) => !ownedSlugs.has(event.slug)).slice(0, 3);
-  const favorites = showcaseEvents.slice(0, 3);
+  const recommended = catalog.filter((event) => !ownedSlugs.has(event.slug)).slice(0, 3);
+  const favorites = catalog.slice(0, 3);
   const firstName =
     (typeof user.user_metadata?.full_name === "string"
       ? user.user_metadata.full_name.split(" ")[0]
@@ -222,18 +231,20 @@ export default async function MyTicketsPage() {
 
         <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
           <div className="space-y-8">
-            <section className="space-y-4">
-              <SectionTitle
-                title="Próximos eventos"
-                description="Sugestões que combinam com você."
-                action={{ label: "Explorar", href: "/eventos" }}
-              />
-              <div className="grid gap-3">
-                {recommended.map((event) => (
-                  <UpcomingEvent key={event.id} event={event} />
-                ))}
-              </div>
-            </section>
+            {recommended.length > 0 ? (
+              <section className="space-y-4">
+                <SectionTitle
+                  title="Próximos eventos"
+                  description="Sugestões que combinam com você."
+                  action={{ label: "Explorar", href: "/eventos" }}
+                />
+                <div className="grid gap-3">
+                  {recommended.map((event) => (
+                    <UpcomingEvent key={event.id} event={event} />
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <section className="space-y-4">
               <SectionTitle title="Histórico" description="Suas compras anteriores." />
@@ -244,68 +255,47 @@ export default async function MyTicketsPage() {
           </div>
 
           <aside className="space-y-6">
-            <section className="surface space-y-4 rounded-2xl p-5">
-              <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-2 font-semibold text-white">
-                  <Heart className="h-4 w-4 text-[#ff1493]" aria-hidden />
-                  Favoritos
-                </h3>
-                <Link href="/eventos" className="text-xs font-semibold text-white/50 transition-colors hover:text-white">
-                  Ver todos
-                </Link>
-              </div>
-              <ul className="space-y-2.5">
-                {favorites.map((event) => (
-                  <li key={event.id}>
-                    <Link
-                      href={`/eventos/${event.slug}`}
-                      className="group flex items-center gap-3 rounded-xl border border-transparent p-2 transition-colors hover:border-white/10 hover:bg-white/[0.03]"
-                    >
-                      <span
-                        className="h-10 w-10 shrink-0 rounded-lg bg-cover bg-center"
-                        style={{ backgroundImage: `url(${event.cover_image_url})` }}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-white">{event.title}</span>
-                        <span className="block truncate text-xs text-white/45">{event.city}</span>
-                      </span>
-                      <Badge variant="favorite" icon={null} className="px-2">
-                        {event.category}
-                      </Badge>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {favorites.length > 0 ? (
+              <section className="surface space-y-4 rounded-2xl p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 font-semibold text-white">
+                    <Heart className="h-4 w-4 text-[#ff1493]" aria-hidden />
+                    Em destaque
+                  </h3>
+                  <Link href="/eventos" className="text-xs font-semibold text-white/50 transition-colors hover:text-white">
+                    Ver todos
+                  </Link>
+                </div>
+                <ul className="space-y-2.5">
+                  {favorites.map((event) => (
+                    <li key={event.id}>
+                      <Link
+                        href={`/eventos/${event.slug}`}
+                        className="group flex items-center gap-3 rounded-xl border border-transparent p-2 transition-colors hover:border-white/10 hover:bg-white/[0.03]"
+                      >
+                        <span
+                          className="h-10 w-10 shrink-0 rounded-lg bg-cover bg-center"
+                          style={{ backgroundImage: event.cover_image_url ? `url(${event.cover_image_url})` : undefined }}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-white">{event.title}</span>
+                          <span className="block truncate text-xs text-white/45">{event.city || "TicketFly"}</span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
             <section className="surface space-y-4 rounded-2xl p-5">
-              <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-2 font-semibold text-white">
-                  <CreditCard className="h-4 w-4 text-[#ff1493]" aria-hidden />
-                  Métodos de pagamento
-                </h3>
-              </div>
-              <ul className="space-y-2.5">
-                {paymentMethods.map((method) => (
-                  <li
-                    key={method.id}
-                    className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3"
-                  >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70">
-                      <CreditCard className="h-4 w-4" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-white">{method.label}</span>
-                      <span className="block truncate text-xs text-white/45">{method.detail}</span>
-                    </span>
-                    {method.primary ? <Badge variant="neutral">Padrão</Badge> : null}
-                  </li>
-                ))}
-              </ul>
-              <button type="button" className="ghost-button btn h-10 w-full text-sm">
-                <Plus className="h-4 w-4" aria-hidden />
-                Adicionar método
-              </button>
+              <h3 className="flex items-center gap-2 font-semibold text-white">
+                <CreditCard className="h-4 w-4 text-[#ff1493]" aria-hidden />
+                Pagamento
+              </h3>
+              <p className="text-sm leading-6 text-white/55">
+                Pix e cartão entram no checkout de cada compra. A TicketFly não guarda cartão no painel.
+              </p>
             </section>
 
             <QuickAction
