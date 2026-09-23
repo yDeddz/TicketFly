@@ -1,11 +1,13 @@
 import { apiError, createRequestId } from "@/lib/api-error";
+import { ticketQrDataUrl } from "@/lib/qrcode";
 import {
   authorizeTicketAccess,
   loadTicketByCode,
   ticketIsQrEligible,
 } from "@/lib/ticket-access";
 import { renderTicketDownloadImage } from "@/lib/tickets/ticket-image";
-import { buildWalletQrDataUrl, buildWalletQrPng, ticketDownloadFilename } from "@/lib/tickets/wallet-qr";
+import { ensureStableGateCode } from "@/lib/tickets/gate-code";
+import { buildWalletQrPng, ticketDownloadFilename } from "@/lib/tickets/wallet-qr";
 
 export const dynamic = "force-dynamic";
 
@@ -46,8 +48,9 @@ export async function GET(request: Request, { params }: Params) {
   const filename = ticketDownloadFilename(ticket);
 
   try {
-    const qrDataUrl = await buildWalletQrDataUrl(ticket);
-    const image = renderTicketDownloadImage({ ticket, qrDataUrl });
+    const gate = await ensureStableGateCode(ticket.id);
+    const qrDataUrl = await ticketQrDataUrl(gate.raw);
+    const image = renderTicketDownloadImage({ ticket, qrDataUrl, doorCode: gate.code });
     const body = await image.arrayBuffer();
 
     return new Response(body, {

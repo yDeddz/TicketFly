@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DownloadTicketButton } from "@/components/download-ticket-button";
+import { SendTicketEmailButton } from "@/components/send-ticket-email-button";
 import { paymentStatusLabel } from "@/components/status-badges";
 import { TicketQrLive } from "@/components/ticket-qr-live";
 import { AlertBanner } from "@/components/ui/alert-banner";
@@ -18,8 +19,8 @@ type StatusPayload = {
   amount_cents: number;
   checkout_url: string | null;
   tickets?:
-    | { code: string; status: string; buyer_email: string | null }
-    | { code: string; status: string; buyer_email: string | null }[]
+    | { code: string; status: string; buyer_email: string | null; buyer_name?: string | null }
+    | { code: string; status: string; buyer_email: string | null; buyer_name?: string | null }[]
     | null;
   ticketHref?: string | null;
   ticketCode?: string | null;
@@ -164,12 +165,18 @@ export function PaymentStatusClient({
 
       {showTicket && ticketPaid ? (
         <div className="mt-6 grid gap-4 rounded-xl border border-[#ff1493]/25 bg-black/25 p-4">
-          <TicketQrLive code={ticketCode} accessToken={ticketAccess} initialStatus="paid" />
+          <TicketQrLive
+            code={ticketCode}
+            accessToken={ticketAccess}
+            initialStatus="paid"
+            buyerName={ticket?.buyer_name}
+          />
           <DownloadTicketButton
             code={ticketCode}
             accessToken={ticketAccess}
             className="w-full [&_button]:w-full [&_button]:justify-center"
           />
+          <SendTicketEmailButton code={ticketCode} accessToken={ticketAccess} />
         </div>
       ) : null}
 

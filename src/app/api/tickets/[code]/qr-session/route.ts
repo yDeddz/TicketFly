@@ -1,47 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { issueLiveTicketQr } from "@/lib/qrcode";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { ticketQrDataUrl } from "@/lib/qrcode";
 import {
   authorizeTicketAccess,
   loadTicketByCode,
   ticketIsQrEligible,
 } from "@/lib/ticket-access";
-import {
-  formatManualGateCode,
-  generateManualGateCode,
-  QR_SESSION_TTL_SECONDS,
-} from "@/lib/ticket-crypto";
+import { ensureStableGateCode } from "@/lib/tickets/gate-code";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ code: string }> };
-
-async function persistManualGateCode(ticketId: string, expiresAtIso: string) {
-  const admin = createAdminClient();
-
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const manualCode = generateManualGateCode();
-    const { error } = await admin
-      .from("tickets")
-      .update({
-        manual_code: manualCode,
-        manual_code_expires_at: expiresAtIso,
-      })
-      .eq("id", ticketId);
-
-    if (!error) {
-      return formatManualGateCode(manualCode);
-    }
-
-    // Unique collision on manual_code — retry with a new code.
-    if (error.code !== "23505") {
-      throw error;
-    }
-  }
-
-  throw new Error("failed_to_allocate_manual_code");
-}
 
 export async function GET(request: Request, { params }: Params) {
   const { code } = await params;
@@ -74,32 +43,23 @@ export async function GET(request: Request, { params }: Params) {
     );
   }
 
-  const session = await issueLiveTicketQr({
-    ticketId: ticket.id,
-    qrToken: ticket.qr_token,
-    qrVersion: ticket.qr_version ?? 1,
-    ttlSeconds: QR_SESSION_TTL_SECONDS,
-  });
-
-  let manualCode: string | null = null;
+  let gate: Awaited<ReturnType<typeof ensureStableGateCode>>;
   try {
-    manualCode = await persistManualGateCode(ticket.id, session.expiresAt);
+    gate = await ensureStableGateCode(ticket.id);
   } catch {
-    // QR still works if manual code allocation fails; staff can retry refresh.
-    manualCode = null;
+    return NextResponse.json({ error: "Não foi possível gerar o código da porta" }, { status: 500 });
   }
+
+  const dataUrl = await ticketQrDataUrl(gate.raw);
 
   return NextResponse.json(
     {
       code: ticket.code,
       status: ticket.status,
-      payload: session.payload,
-      dataUrl: session.dataUrl,
-      expiresAt: session.expiresAt,
-      expiresInSeconds: session.expiresInSeconds,
-      refreshAfterSeconds: Math.max(20, Math.floor(session.expiresInSeconds * 0.55)),
-      version: ticket.qr_version ?? 1,
-      manualCode,
+      dataUrl,
+      expiresAt: gate.expiresAt,
+      manualCode: gate.code,
+      buyerName: ticket.buyer_name,
     },
     {
       headers: {

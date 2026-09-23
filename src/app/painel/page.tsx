@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signTicketAccessToken } from "@/lib/ticket-crypto";
+import { ticketAccessTtlSeconds } from "@/lib/tickets/access-window";
 import { claimTicketsForBuyer } from "@/lib/tickets/claim";
 import { type PurchaseRecord, type TicketTier, type WalletTicket } from "@/lib/ticketfly-data";
 
@@ -49,7 +50,7 @@ export default async function MyTicketsPage() {
   let query = admin
     .from("tickets")
     .select(
-      "id,code,status,amount_paid_cents,buyer_email,buyer_name,created_at,events(title,slug,starts_at,city,venue_name,cover_image_url),ticket_batches(name)",
+      "id,code,status,amount_paid_cents,buyer_email,buyer_name,created_at,events(title,slug,starts_at,ends_at,city,venue_name,cover_image_url),ticket_batches(name)",
     )
     .in("status", ["paid", "used", "cancelled"])
     .order("created_at", { ascending: false })
@@ -76,6 +77,7 @@ export default async function MyTicketsPage() {
             title: string;
             slug: string | null;
             starts_at: string;
+            ends_at: string | null;
             city: string | null;
             venue_name: string;
             cover_image_url: string | null;
@@ -84,6 +86,7 @@ export default async function MyTicketsPage() {
             title: string;
             slug: string | null;
             starts_at: string;
+            ends_at: string | null;
             city: string | null;
             venue_name: string;
             cover_image_url: string | null;
@@ -98,6 +101,7 @@ export default async function MyTicketsPage() {
       accessToken = await signTicketAccessToken({
         code: row.code,
         buyerEmail: row.buyer_email,
+        ttlSeconds: ticketAccessTtlSeconds(event),
       });
     } catch {
       accessToken = undefined;

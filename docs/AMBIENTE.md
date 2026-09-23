@@ -74,6 +74,8 @@ ASAAS_API_KEY=...
 ASAAS_API_URL=https://api.asaas.com
 ASAAS_WEBHOOK_TOKEN=...
 CRON_SECRET=...                 # mesmo header do job externo
+RESEND_API_KEY=re_...           # Resend, dominio ticketfly.app
+RESEND_FROM=TicketFly <ingressos@ticketfly.app>
 ```
 
 Mercado Pago só se for usar (`MERCADO_PAGO_*`). Hoje Asaas basta.

@@ -7,6 +7,7 @@ import clsx from "clsx";
 export type DashboardNavItem = {
   href: string;
   label: string;
+  soon?: boolean;
 };
 
 export function DashboardNav({ items, base }: { items: DashboardNavItem[]; base: string }) {
@@ -28,6 +29,11 @@ export function DashboardNav({ items, base }: { items: DashboardNavItem[]; base:
             )}
           >
             {item.label}
+            {item.soon ? (
+              <span className="ml-2 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-200">
+                Em breve
+              </span>
+            ) : null}
           </Link>
         );
       })}

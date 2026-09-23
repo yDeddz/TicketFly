@@ -8,6 +8,7 @@ import {
 import { notifySaleCompleted, notifySaleRefunded } from "@/lib/organizer-webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { attachPaidTicketsToBuyerAccount } from "@/lib/tickets/claim";
+import { emailPaidTicket } from "@/lib/tickets/ticket-email";
 
 type PagarmeWebhook = {
   id?: string;
@@ -78,7 +79,10 @@ export async function POST(request: Request) {
 
   if (status === "approved") {
     await attachPaidTicketsToBuyerAccount(localPaymentId);
-    if (before.status !== "approved") await notifySaleCompleted(localPaymentId);
+    if (before.status !== "approved") {
+      await notifySaleCompleted(localPaymentId);
+      await emailPaidTicket(localPaymentId, "pagarme");
+    }
   } else if (status === "refunded" && before.status !== "refunded") {
     const { data: ticket } = await admin
       .from("tickets")

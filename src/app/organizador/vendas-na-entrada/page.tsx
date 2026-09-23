@@ -10,6 +10,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+/** ponytail: flip to true to restore the live door-sale form. Code stays; UI stays paused. */
+const DOOR_SALES_ENABLED: boolean = false;
+
 export default async function DoorSalesPage() {
   const auth = await requireApprovedOrganizer();
   if (!auth.user) redirect("/login?next=/organizador/vendas-na-entrada");
@@ -18,19 +21,45 @@ export default async function DoorSalesPage() {
     return <AlertBanner tone="error">{auth.error ?? "Organizador obrigatório"}</AlertBanner>;
   }
 
+  if (!DOOR_SALES_ENABLED) {
+    return (
+      <div className="grid max-w-2xl gap-6">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">
+            Operação presencial
+          </p>
+          <h2 className="mt-2 text-3xl font-black">Venda presencial</h2>
+        </div>
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">Em breve</p>
+          <h3 className="mt-2 text-xl font-black text-amber-50">Bilheteria na porta ainda não está no ar</h3>
+          <p className="mt-3 text-sm leading-6 text-amber-100/80">
+            A venda na entrada fica pausada por enquanto. Ingressos continuam na vitrine online, e a
+            validação do QR segue em Gestão de entrada.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <DoorSalesLive organizerId={auth.organizer.id} />;
+}
+
+async function DoorSalesLive({ organizerId }: { organizerId: string }) {
+
   const admin = createAdminClient();
   const [{ data: organizer }, { data: events }] = await Promise.all([
     admin
       .from("organizers")
       .select("pagarme_connection_status")
-      .eq("id", auth.organizer.id)
+      .eq("id", organizerId)
       .single(),
     admin
       .from("events")
       .select(
         "id,title,starts_at,status,ticket_batches(id,name,price_cents,quantity_total,quantity_sold,quantity_reserved,is_active,sales_start_at,sales_end_at)",
       )
-      .eq("organizer_id", auth.organizer.id)
+      .eq("organizer_id", organizerId)
       .eq("status", "published")
       .order("starts_at", { ascending: true }),
   ]);

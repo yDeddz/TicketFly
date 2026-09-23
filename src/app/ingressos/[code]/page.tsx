@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { TicketQrLive } from "@/components/ticket-qr-live";
 import { WalletButton } from "@/components/wallet-button";
 import { DownloadTicketButton } from "@/components/download-ticket-button";
+import { SendTicketEmailButton } from "@/components/send-ticket-email-button";
 import { formatDateTime } from "@/lib/format";
 import {
   authorizeTicketAccess,
@@ -74,7 +75,12 @@ export default async function TicketPage({
           </div>
 
           {ticket.status === "paid" ? (
-            <TicketQrLive code={ticket.code} accessToken={access} initialStatus={ticket.status} />
+            <TicketQrLive
+              code={ticket.code}
+              accessToken={access}
+              initialStatus={ticket.status}
+              buyerName={ticket.buyer_name}
+            />
           ) : (
             <div className="rounded-md border border-[#f5a524]/50 bg-[#261802] p-4 text-sm font-medium text-[#ffd27a]">
               QR Code indisponível.{" "}
@@ -95,6 +101,7 @@ export default async function TicketPage({
                 accessToken={access}
                 className="w-full [&_button]:w-full [&_button]:justify-center"
               />
+              <SendTicketEmailButton code={ticket.code} accessToken={access} />
               <WalletButton
                 code={ticket.code}
                 accessToken={access}
@@ -113,7 +120,7 @@ export default async function TicketPage({
             Ref. {ticket.code}
           </p>
           <p className="text-center text-[11px] text-[#c9aabc]/80">
-            Mostre o QR Code na entrada. O código abaixo é só para conferência e não substitui o QR.
+            Na porta, diga o código da porta ou mostre o QR. A referência abaixo não entra.
           </p>
         </div>
       </section>

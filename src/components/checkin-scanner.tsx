@@ -390,8 +390,7 @@ export function CheckinScanner({ events }: { events: CheckinEventOption[] }) {
               />
             </label>
             <p className="text-xs text-[#c9aabc]">
-              Peça o código exibido abaixo do QR no celular do convidado. Ele muda junto com o QR
-              (~90s).
+              Peça o código grande do ingresso. Ele vale até o fim do evento e só entra uma vez.
             </p>
             <button
               disabled={loading || manualCode.replace(/-/g, "").length < 8 || !eventId}

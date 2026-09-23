@@ -4,6 +4,7 @@ import { paymentClient, verifyMercadoPagoSignature } from "@/lib/mercado-pago";
 import { notifySaleCompleted, notifySaleRefunded } from "@/lib/organizer-webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { attachPaidTicketsToBuyerAccount } from "@/lib/tickets/claim";
+import { emailPaidTicket } from "@/lib/tickets/ticket-email";
 
 type MercadoPagoWebhook = {
   type?: string;
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
 
   if (mappedStatus === "approved" && before?.status !== "approved") {
     await notifySaleCompleted(String(localPaymentId));
+    await emailPaidTicket(String(localPaymentId), "mercado-pago");
   }
 
   if (mappedStatus === "refunded" && before?.status !== "refunded") {

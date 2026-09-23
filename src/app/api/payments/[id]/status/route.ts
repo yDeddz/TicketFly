@@ -4,6 +4,7 @@ import { apiError, createRequestId } from "@/lib/api-error";
 import { publicTicketUrl } from "@/lib/qrcode";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signTicketAccessToken } from "@/lib/ticket-crypto";
+import { ticketAccessTtlSeconds } from "@/lib/tickets/access-window";
 
 export async function GET(
   request: Request,
@@ -16,7 +17,7 @@ export async function GET(
   const { data, error } = await admin
     .from("payments")
     .select(
-      "id,status,checkout_url,amount_cents,provider_payment_id,tickets(code,status,buyer_email)",
+      "id,status,checkout_url,amount_cents,provider_payment_id,tickets(code,status,buyer_email,buyer_name),events(starts_at,ends_at)",
     )
     .eq("id", id)
     .single();
@@ -30,6 +31,7 @@ export async function GET(
   }
 
   const ticket = Array.isArray(data.tickets) ? data.tickets[0] : data.tickets;
+  const event = Array.isArray(data.events) ? data.events[0] : data.events;
   let ticketHref: string | null = null;
   let ticketAccess: string | null = null;
   const ticketCode = ticket?.code ?? null;
@@ -39,6 +41,7 @@ export async function GET(
       ticketAccess = await signTicketAccessToken({
         code: ticket.code,
         buyerEmail: ticket.buyer_email,
+        ttlSeconds: ticketAccessTtlSeconds(event),
       });
       ticketHref = publicTicketUrl(ticket.code, ticketAccess);
     } catch {

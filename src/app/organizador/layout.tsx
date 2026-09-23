@@ -14,7 +14,7 @@ const nav = [
   { href: "/organizador/eventos", label: "Eventos" },
   { href: "/organizador/promotores", label: "Promotores" },
   { href: "/organizador/cupons", label: "Cupons" },
-  { href: "/organizador/vendas-na-entrada", label: "Bilheteria na Porta" },
+  { href: "/organizador/vendas-na-entrada", label: "Bilheteria na Porta", soon: true },
   { href: "/organizador/ingressos", label: "Ingressos / QR" },
   { href: "/organizador/entradas", label: "Gestão de entrada" },
   { href: "/organizador/pagamentos", label: "Pagamentos" },

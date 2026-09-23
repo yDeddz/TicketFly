@@ -3,6 +3,7 @@ import { publicTicketUrl } from "@/lib/qrcode";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signTicketAccessToken } from "@/lib/ticket-crypto";
+import { ticketAccessTtlSeconds } from "@/lib/tickets/access-window";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,14 @@ export default async function PaymentStatusPage({ params }: { params: Promise<{ 
   const [{ data: payment }, auth] = await Promise.all([
     admin
       .from("payments")
-      .select("id,status,amount_cents,checkout_url,tickets(code,status,buyer_email)")
+      .select("id,status,amount_cents,checkout_url,tickets(code,status,buyer_email,buyer_name),events(starts_at,ends_at)")
       .eq("id", id)
       .single(),
     supabase.auth.getUser(),
   ]);
 
   const ticket = Array.isArray(payment?.tickets) ? payment?.tickets[0] : payment?.tickets;
+  const event = Array.isArray(payment?.events) ? payment?.events[0] : payment?.events;
 
   let ticketHref: string | null = null;
   let ticketAccess: string | null = null;
@@ -28,6 +30,7 @@ export default async function PaymentStatusPage({ params }: { params: Promise<{ 
       ticketAccess = await signTicketAccessToken({
         code: ticket.code,
         buyerEmail: ticket.buyer_email,
+        ttlSeconds: ticketAccessTtlSeconds(event),
       });
       ticketHref = publicTicketUrl(ticket.code, ticketAccess);
     } catch {

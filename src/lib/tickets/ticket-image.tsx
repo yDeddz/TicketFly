@@ -7,6 +7,7 @@ import { unwrapRelation } from "@/lib/ticket-access";
 export function renderTicketDownloadImage(args: {
   ticket: TicketAccessRow;
   qrDataUrl: string;
+  doorCode?: string | null;
 }) {
   const event = unwrapRelation(args.ticket.events);
   const batch = unwrapRelation(args.ticket.ticket_batches);
@@ -71,8 +72,21 @@ export function renderTicketDownloadImage(args: {
           }}
         >
           <img src={args.qrDataUrl} width={420} height={420} />
-          <div style={{ display: "flex", marginTop: 18, fontSize: 18, color: "#ffb1d5" }}>
-            QR válido até o fim do evento
+          {args.doorCode ? (
+            <div
+              style={{
+                display: "flex",
+                marginTop: 16,
+                fontSize: 42,
+                fontWeight: 900,
+                letterSpacing: 6,
+              }}
+            >
+              {args.doorCode}
+            </div>
+          ) : null}
+          <div style={{ display: "flex", marginTop: 12, fontSize: 18, color: "#ffb1d5" }}>
+            Código da porta · válido até o fim do evento
           </div>
         </div>
 
@@ -95,7 +109,7 @@ export function renderTicketDownloadImage(args: {
     ),
     {
       width: 720,
-      height: 1180,
+      height: 1280,
     },
   );
 }

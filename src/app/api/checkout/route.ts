@@ -12,6 +12,7 @@ import { createProviderCheckout, resolveCheckoutProvider } from "@/lib/payments"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { attachPaidTicketsToBuyerAccount, resolveBuyerUserId } from "@/lib/tickets/claim";
+import { emailPaidTicket } from "@/lib/tickets/ticket-email";
 import { checkoutSchema } from "@/lib/validators";
 
 type Reservation = {
@@ -251,6 +252,7 @@ export async function POST(request: Request) {
 
     await admin.from("payments").update({ checkout_url: statusUrl }).eq("id", payment.id);
     await attachPaidTicketsToBuyerAccount(payment.id);
+    await emailPaidTicket(payment.id, "free");
 
     return NextResponse.json({
       paymentId: payment.id,

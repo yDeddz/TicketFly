@@ -53,6 +53,8 @@ const payment = [
   "PAGARME_API_URL",
 ];
 
+const email = ["RESEND_API_KEY", "RESEND_FROM"];
+
 const optional = [];
 
 function present(key) {
@@ -94,6 +96,7 @@ console.log(`.env.local: ${existsSync(resolve(ROOT, ".env.local")) ? "encontrado
 
 const missingRequired = report("Obrigatórias", required, "required");
 report("Pagar.me/Stone", payment, "required");
+const missingEmail = report("E-mail do ingresso (Resend)", email, "required");
 report("Opcionais", optional, "optional");
 
 const pagarmeReady =
@@ -154,7 +157,7 @@ console.log(`  4. Conferir job externo → ${cronUrl}`);
 console.log(`  5. Abrir ${appUrl.replace(/\/$/, "")}/eventos/ops-teste-agosto`);
 console.log("  6. Comprar, confirmar webhook Pagar.me e escanear em /checkin");
 
-if (missingRequired || !qrOk || !cronOk || !pagarmeReady || alignmentFailed) {
+if (missingRequired || missingEmail || !qrOk || !cronOk || !pagarmeReady || alignmentFailed) {
   console.log("\nAmbiente incompleto ou desalinhado. Ver docs/AMBIENTE.md.");
   process.exit(1);
 }

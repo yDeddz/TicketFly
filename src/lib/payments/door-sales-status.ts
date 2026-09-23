@@ -5,13 +5,14 @@ import {
   signDoorPaymentAccessToken,
   signTicketAccessToken,
 } from "@/lib/ticket-crypto";
+import { ticketAccessTtlSeconds } from "@/lib/tickets/access-window";
 
 export async function loadDoorSaleStatus(paymentId: string) {
   const admin = createAdminClient();
   const { data: payment } = await admin
     .from("payments")
     .select(
-      "id,status,amount_cents,payment_method,checkout_url,provider_payment_id,event_id,ticket_batch_id,created_by,sales_channel,events(title,organizer_id),ticket_batches(name),tickets(id,code,status,buyer_email)",
+      "id,status,amount_cents,payment_method,checkout_url,provider_payment_id,event_id,ticket_batch_id,created_by,sales_channel,events(title,organizer_id,starts_at,ends_at),ticket_batches(name),tickets(id,code,status,buyer_email)",
     )
     .eq("id", paymentId)
     .eq("sales_channel", "door")
@@ -43,6 +44,7 @@ export async function loadDoorSaleStatus(paymentId: string) {
     const access = await signTicketAccessToken({
       code: ticket.code,
       buyerEmail: ticket.buyer_email,
+      ttlSeconds: ticketAccessTtlSeconds(event),
     });
     ticketHref = publicTicketUrl(ticket.code, access);
   }

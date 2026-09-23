@@ -18,6 +18,8 @@ const KEYS = [
   "PAGARME_PLATFORM_RECIPIENT_ID",
   "PAGARME_WEBHOOK_SECRET",
   "PAGARME_API_URL",
+  "RESEND_API_KEY",
+  "RESEND_FROM",
 ];
 
 function loadEnvFile(fileName) {
