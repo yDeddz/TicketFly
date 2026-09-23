@@ -1,10 +1,11 @@
 "use client";
 
-import { Loader2, Plus, Save } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { formatCurrency, reaisToCents, centsToReaisInput } from "@/lib/format";
+import { matchRecipientByDocument, stoneRecipientLabel, type StoneRecipient } from "@/lib/payments/stone-recipient";
 import type { MpConnectionStatus } from "@/types/domain";
 
 type AdminOrganizer = {
@@ -51,6 +52,12 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [query, setQuery] = useState("");
+  const [unlinkedOnly, setUnlinkedOnly] = useState(false);
+  const [linkOrganizerId, setLinkOrganizerId] = useState("");
+  const [linkRecipientId, setLinkRecipientId] = useState("");
+  const [recipients, setRecipients] = useState<StoneRecipient[]>([]);
+  const [loadingRecipients, setLoadingRecipients] = useState(true);
   const [createForm, setCreateForm] = useState({
     email: "",
     tradeName: "",
@@ -66,13 +73,89 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
     status: "approved" as AdminOrganizer["status"],
   });
 
-  async function saveOrganizer(organizerId: string) {
-    const form = forms[organizerId];
+  useEffect(() => {
+    setForms((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const organizer of organizers) {
+        const saved = organizer.pagarme_recipient_id ?? "";
+        const existing = next[organizer.id];
+        if (!existing) {
+          next[organizer.id] = organizerToForm(organizer);
+          changed = true;
+          continue;
+        }
+        if (!existing.pagarmeRecipientId && saved) {
+          next[organizer.id] = { ...existing, pagarmeRecipientId: saved };
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [organizers]);
+
+  async function reloadRecipients() {
+    setLoadingRecipients(true);
+    const response = await fetch("/api/admin/stone/recipients");
+    const body = await response.json().catch(() => null);
+    setLoadingRecipients(false);
+    if (!response.ok) {
+      setMessage(body?.error ?? "Não foi possível listar os recebedores da Stone.");
+      return;
+    }
+    setRecipients(Array.isArray(body?.recipients) ? body.recipients : []);
+    if (body?.configured === false) {
+      setMessage("A Stone não está configurada neste ambiente. Cole o ID rp_ para vincular.");
+    }
+  }
+
+  useEffect(() => {
+    void reloadRecipients();
+  }, []);
+
+  const linkedBy = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const organizer of organizers) {
+      if (organizer.pagarme_recipient_id) map[organizer.pagarme_recipient_id] = organizer.trade_name;
+    }
+    return map;
+  }, [organizers]);
+
+  const unlinkedOrganizers = organizers.filter((organizer) => !organizer.pagarme_recipient_id);
+  const availableRecipients = recipients.filter((recipient) => !linkedBy[recipient.id] || recipient.id === linkRecipientId);
+
+  const visibleOrganizers = organizers.filter((organizer) => {
+    if (unlinkedOnly && organizer.pagarme_recipient_id) return false;
+    const haystack = [
+      organizer.trade_name,
+      organizer.legal_name,
+      organizer.document,
+      organizer.pagarme_recipient_id,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query.trim().toLowerCase());
+  });
+
+  function setRecipient(organizerId: string, pagarmeRecipientId: string) {
+    const organizer = organizers.find((item) => item.id === organizerId);
+    setForms((current) => {
+      const existing = current[organizerId] ?? (organizer ? organizerToForm(organizer) : null);
+      if (!existing) return current;
+      return { ...current, [organizerId]: { ...existing, pagarmeRecipientId } };
+    });
+  }
+
+  async function saveOrganizer(organizerId: string, recipientOverride?: string) {
+    const organizer = organizers.find((item) => item.id === organizerId);
+    const form = forms[organizerId] ?? (organizer ? organizerToForm(organizer) : null);
+    if (!form) return;
     const feeThresholdCents = reaisToCents(form.feeThresholdReais);
     if (feeThresholdCents === null) {
       setMessage("Informe o limiar de taxa em reais (ex.: 120,00).");
       return;
     }
+    const pagarmeRecipientId = recipientOverride ?? form.pagarmeRecipientId;
     setSavingId(organizerId);
     setMessage("");
     const response = await fetch(`/api/admin/organizers/${organizerId}`, {
@@ -84,7 +167,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
         feePercentUptoThreshold: Number(form.feePercentUptoThreshold),
         feePercentAboveThreshold: Number(form.feePercentAboveThreshold),
         serviceFeePlatformSharePercent: Number(form.serviceFeePlatformSharePercent),
-        pagarmeRecipientId: form.pagarmeRecipientId,
+        pagarmeRecipientId,
       }),
     });
     const body = await response.json().catch(() => null);
@@ -93,7 +176,10 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
       setMessage(body?.error ?? "Não foi possível salvar o contrato.");
       return;
     }
-    setMessage("Contrato atualizado.");
+    setRecipient(organizerId, pagarmeRecipientId);
+    setMessage(pagarmeRecipientId ? "Recebedor Stone vinculado." : "Contrato atualizado.");
+    setLinkOrganizerId("");
+    setLinkRecipientId("");
     router.refresh();
   }
 
@@ -146,7 +232,7 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
         <div>
           <h2 className="text-2xl font-black">Contratos das baladas</h2>
           <p className="mt-1 text-sm text-[#c9aabc]">
-            Aprove parceiros, defina faixas de taxa e registre novas baladas.
+            Aprove a casa, defina taxas e vincule o recebedor já cadastrado na Stone.
           </p>
         </div>
         <button
@@ -162,6 +248,70 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
       {message ? (
         <p className="rounded-xl border border-[#ff1493]/25 bg-[#ff1493]/10 px-4 py-3 text-sm text-[#ffb1d5]">{message}</p>
       ) : null}
+
+      <div className="grid gap-4 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-black">Vincular recebedor Stone</h3>
+            <p className="mt-1 text-sm text-[#c9aabc]">
+              Cadastre o recebedor no painel Stone e escolha a casa aqui. O CPF/CNPJ da ficha sugere o match.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void reloadRecipients()}
+            disabled={loadingRecipients}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-xs font-bold text-white/80 disabled:opacity-60"
+          >
+            {loadingRecipients ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Atualizar Stone
+          </button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <label className="grid gap-2 text-sm">
+            Perfil da casa
+            <select
+              value={linkOrganizerId}
+              onChange={(event) => {
+                const organizerId = event.target.value;
+                setLinkOrganizerId(organizerId);
+                const organizer = organizers.find((item) => item.id === organizerId);
+                const suggested = matchRecipientByDocument(availableRecipients, organizer?.document);
+                setLinkRecipientId(suggested?.id ?? "");
+              }}
+              className="h-11 rounded-md border border-white/10 bg-[#0d0b10] px-3"
+            >
+              <option value="">Escolha o perfil</option>
+              {unlinkedOrganizers.map((organizer) => (
+                <option key={organizer.id} value={organizer.id}>
+                  {organizer.trade_name} · {organizer.document}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm">
+            Recebedor Stone
+            <StoneRecipientSelect
+              value={linkRecipientId}
+              onChange={setLinkRecipientId}
+              recipients={availableRecipients}
+              organizerDocument={organizers.find((item) => item.id === linkOrganizerId)?.document ?? null}
+              linkedBy={linkedBy}
+              currentOrganizerName={null}
+              allowManual
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!linkOrganizerId || !linkRecipientId || savingId === linkOrganizerId}
+            onClick={() => void saveOrganizer(linkOrganizerId, linkRecipientId)}
+            className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-[#ff1493] px-4 text-sm font-bold text-white disabled:opacity-60"
+          >
+            {savingId === linkOrganizerId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Vincular
+          </button>
+        </div>
+      </div>
 
       {showCreate ? (
         <form onSubmit={createContract} className="grid gap-4 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5">
@@ -212,16 +362,34 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
         </form>
       ) : null}
 
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Buscar casa, CNPJ ou rp_..."
+          className="h-11 min-w-64 flex-1 rounded-md border border-white/10 bg-[#0d0b10] px-3 text-sm"
+        />
+        <label className="inline-flex items-center gap-2 text-sm text-white/70">
+          <input
+            type="checkbox"
+            checked={unlinkedOnly}
+            onChange={(event) => setUnlinkedOnly(event.target.checked)}
+          />
+          Só sem recebedor
+        </label>
+      </div>
+
       <div className="grid gap-4">
-        {organizers.length === 0 && !showCreate ? (
+        {visibleOrganizers.length === 0 && !showCreate ? (
           <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-white/60">
-            Nenhum contrato ainda. Crie o primeiro parceiro para publicar eventos de teste.
+            Nenhuma casa neste filtro. Crie o contrato ou limpe a busca.
           </p>
         ) : null}
-        {organizers.map((organizer) => {
+        {visibleOrganizers.map((organizer) => {
           const form = forms[organizer.id];
           if (!form) return null;
           const saving = savingId === organizer.id;
+          const suggested = matchRecipientByDocument(recipients, organizer.document);
           return (
             <div key={organizer.id} className="grid gap-4 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -233,29 +401,34 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
                   ) : null}
                 </div>
                 <span className="rounded-md border border-white/10 px-3 py-1 text-xs font-bold uppercase text-white/70">
-                  Pagar.me: {organizer.pagarme_connection_status}
+                  Stone: {organizer.pagarme_connection_status}
                 </span>
               </div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <label className="grid gap-2 text-sm md:col-span-2">
-                  ID do recebedor Pagar.me
-                  <input
-                    placeholder="rp_..."
+                  Recebedor Stone
+                  <StoneRecipientSelect
                     value={form.pagarmeRecipientId}
-                    onChange={(e) =>
-                      setForms((current) => ({
-                        ...current,
-                        [organizer.id]: {
-                          ...current[organizer.id],
-                          pagarmeRecipientId: e.target.value.trim(),
-                        },
-                      }))
-                    }
-                    className="h-11 rounded-md border border-white/10 bg-[#0d0b10] px-3 font-mono"
+                    onChange={(value) => setRecipient(organizer.id, value)}
+                    recipients={recipients}
+                    organizerDocument={organizer.document}
+                    linkedBy={linkedBy}
+                    currentOrganizerName={organizer.trade_name}
+                    allowManual
                   />
-                  <span className="text-xs text-[#c9aabc]">
-                    Somente administradores veem e alteram este campo.
-                  </span>
+                  {suggested && suggested.id !== form.pagarmeRecipientId ? (
+                    <button
+                      type="button"
+                      onClick={() => setRecipient(organizer.id, suggested.id)}
+                      className="w-fit cursor-pointer text-left text-xs font-bold text-[#ff7ec8]"
+                    >
+                      Usar recebedor do mesmo CPF/CNPJ
+                    </button>
+                  ) : (
+                    <span className="text-xs text-[#c9aabc]">
+                      Somente administradores veem e alteram este vínculo.
+                    </span>
+                  )}
                 </label>
                 <label className="grid gap-2 text-sm">
                   Status
@@ -335,6 +508,61 @@ export function AdminContractsPanel({ organizers }: { organizers: AdminOrganizer
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function StoneRecipientSelect({
+  value,
+  onChange,
+  recipients,
+  organizerDocument,
+  linkedBy,
+  currentOrganizerName,
+  allowManual,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  recipients: StoneRecipient[];
+  organizerDocument: string | null;
+  linkedBy: Record<string, string>;
+  currentOrganizerName: string | null;
+  allowManual?: boolean;
+}) {
+  const suggested = matchRecipientByDocument(recipients, organizerDocument);
+  const valueInList = recipients.some((recipient) => recipient.id === value);
+
+  return (
+    <div className="grid gap-2">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 rounded-md border border-white/10 bg-[#0d0b10] px-3 font-mono text-sm"
+      >
+        <option value="">Sem recebedor</option>
+        {!valueInList && value ? <option value={value}>{value} (não listado)</option> : null}
+        {recipients.map((recipient) => {
+          const takenBy = linkedBy[recipient.id];
+          const takenByOther = Boolean(takenBy && takenBy !== currentOrganizerName);
+          const inactive = Boolean(recipient.status && recipient.status !== "active");
+          return (
+            <option key={recipient.id} value={recipient.id} disabled={inactive || takenByOther}>
+              {stoneRecipientLabel(recipient)}
+              {suggested?.id === recipient.id ? " · sugerido" : ""}
+              {takenByOther ? ` · já em ${takenBy}` : ""}
+              {inactive ? " · inativo" : ""}
+            </option>
+          );
+        })}
+      </select>
+      {allowManual ? (
+        <input
+          placeholder="ou cole rp_..."
+          value={value}
+          onChange={(event) => onChange(event.target.value.trim())}
+          className="h-11 rounded-md border border-white/10 bg-[#0d0b10] px-3 font-mono text-sm"
+        />
+      ) : null}
     </div>
   );
 }

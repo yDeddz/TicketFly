@@ -154,29 +154,23 @@ function FAQList({
   return (
     <div className={cn("mx-auto max-w-3xl", compact ? "mt-6" : "mt-12")}>
       <AnimatePresence mode="wait">
-        {Object.entries(faqData).map(([category, questions]) => {
-          if (selected !== category) return null;
-
-          return (
-            <motion.div
-              key={category}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.5, ease: "backIn" }}
-              className={cn(compact ? "space-y-2.5" : "space-y-4")}
-            >
-              {questions.map((faq) => (
-                <FAQItem
-                  key={faq.question}
-                  question={faq.question}
-                  answer={faq.answer}
-                  compact={compact}
-                />
-              ))}
-            </motion.div>
-          );
-        })}
+        <motion.div
+          key={selected}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.5, ease: "backIn" }}
+          className={cn(compact ? "space-y-2.5" : "space-y-4")}
+        >
+          {(faqData[selected] ?? []).map((faq) => (
+            <FAQItem
+              key={faq.question}
+              question={faq.question}
+              answer={faq.answer}
+              compact={compact}
+            />
+          ))}
+        </motion.div>
       </AnimatePresence>
     </div>
   );

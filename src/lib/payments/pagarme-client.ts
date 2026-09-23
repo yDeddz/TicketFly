@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { appUrl, env } from "@/lib/env";
+import type { StoneRecipient } from "@/lib/payments/stone-recipient";
 import type { LocalPaymentStatus } from "@/lib/payments/types";
 
 const DEFAULT_API_URL = "https://api.pagar.me/core/v5";
@@ -15,6 +16,15 @@ export type PagarmeOrder = {
   charges?: Array<{ id: string; status?: string; amount?: number }>;
 };
 
+export type PagarmeRecipient = {
+  id: string;
+  name?: string;
+  email?: string;
+  document?: string;
+  description?: string;
+  status?: string;
+};
+
 export class PagarmeRequestError extends Error {
   constructor(
     public readonly status: number,
@@ -25,11 +35,12 @@ export class PagarmeRequestError extends Error {
   }
 }
 
+export function hasPagarmeSecret() {
+  return Boolean(process.env.PAGARME_SECRET_KEY?.startsWith("sk_"));
+}
+
 export function hasPagarmeConfig() {
-  return Boolean(
-    process.env.PAGARME_SECRET_KEY?.startsWith("sk_") &&
-      process.env.PAGARME_PLATFORM_RECIPIENT_ID?.startsWith("rp_"),
-  );
+  return hasPagarmeSecret() && Boolean(process.env.PAGARME_PLATFORM_RECIPIENT_ID?.startsWith("rp_"));
 }
 
 export function buildPagarmeSplit(args: {
@@ -92,6 +103,40 @@ async function pagarmeFetch<T>(path: string, init: RequestInit = {}): Promise<T>
   }
 
   return (await response.json()) as T;
+}
+
+export function toStoneRecipient(recipient: PagarmeRecipient): StoneRecipient {
+  return {
+    id: recipient.id,
+    name: recipient.name ?? null,
+    email: recipient.email ?? null,
+    document: recipient.document ?? null,
+    description: recipient.description ?? null,
+    status: recipient.status ?? null,
+  };
+}
+
+export async function pagarmeGetRecipient(id: string) {
+  return pagarmeFetch<PagarmeRecipient>(`/recipients/${encodeURIComponent(id)}`);
+}
+
+export async function pagarmeListRecipients() {
+  const pageSize = 100;
+  // ponytail: ceiling 2_000 recebedores; if we outgrow this, search by document on Stone
+  const maxPages = 20;
+  const recipients: PagarmeRecipient[] = [];
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const result = await pagarmeFetch<{ data?: PagarmeRecipient[]; paging?: { total?: number } }>(
+      `/recipients?page=${page}&size=${pageSize}`,
+    );
+    const batch = result.data ?? [];
+    recipients.push(...batch);
+    const total = result.paging?.total;
+    if (batch.length < pageSize || (total != null && recipients.length >= total)) break;
+  }
+
+  return recipients;
 }
 
 export async function pagarmeCreateCheckout(args: {

@@ -283,6 +283,9 @@ create index organizers_status_idx on public.organizers(status);
 create unique index organizers_document_digits_uidx
   on public.organizers (document_digits)
   where length(coalesce(document_digits, '')) >= 11;
+create unique index organizers_pagarme_recipient_id_uidx
+  on public.organizers (pagarme_recipient_id)
+  where pagarme_recipient_id is not null;
 create index events_organizer_status_idx on public.events(organizer_id, status);
 create index events_slug_idx on public.events(slug);
 create index events_starts_at_idx on public.events(starts_at);

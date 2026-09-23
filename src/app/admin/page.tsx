@@ -23,7 +23,7 @@ export default async function AdminOverviewPage() {
     { count: checkinStaff },
   ] = await Promise.all([
     admin.from("payments").select("amount_cents,platform_fee_cents,net_amount_cents,status"),
-    admin.from("organizers").select("id,status,mp_connection_status,asaas_connection_status,asaas_wallet_id"),
+    admin.from("organizers").select("id,status,pagarme_connection_status"),
     admin.from("events").select("id,status"),
     admin.from("tickets").select("id", { count: "exact", head: true }).in("status", ["paid", "used"]),
     admin.from("tickets").select("id", { count: "exact", head: true }).eq("status", "used"),
@@ -37,11 +37,7 @@ export default async function AdminOverviewPage() {
   const pendingPartners = organizers?.filter((o) => o.status === "pending").length ?? 0;
   const liveEvents = events?.filter((e) => e.status === "published").length ?? 0;
   const approvedPartners = organizers?.filter((o) => o.status === "approved") ?? [];
-  const partnersWithPayout = approvedPartners.filter(
-    (o) =>
-      o.mp_connection_status === "connected" ||
-      (o.asaas_connection_status === "connected" && Boolean(o.asaas_wallet_id)),
-  ).length;
+  const partnersWithPayout = approvedPartners.filter((o) => o.pagarme_connection_status === "connected").length;
   const pendingPayments = payments?.filter((p) => p.status === "pending").length ?? 0;
 
   return (
@@ -60,10 +56,10 @@ export default async function AdminOverviewPage() {
                 : `${pendingPartners} casa(s) travada(s) sem painel`,
           },
           {
-            label: "Parceiro aprovado com provedor conectado",
+            label: "Parceiro aprovado com recebedor Stone",
             done: partnersWithPayout > 0,
             href: "/admin/contratos",
-            hint: `${partnersWithPayout}/${approvedPartners.length} aprovados com Asaas ou MP`,
+            hint: `${partnersWithPayout}/${approvedPartners.length} aprovados com recebedor vinculado`,
           },
           {
             label: "Evento publicado na vitrine",

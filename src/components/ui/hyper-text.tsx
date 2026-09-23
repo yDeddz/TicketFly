@@ -69,11 +69,11 @@ export function HyperText({
   }, [text, duration, trigger, animateOnLoad]);
 
   return (
-    <div
-      className="flex scale-100 cursor-default overflow-hidden py-0"
+    <span
+      className="inline-flex scale-100 cursor-default overflow-hidden py-0"
       onMouseEnter={triggerAnimation}
     >
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {displayText.map((letter, i) => (
           <motion.span
             key={i}
@@ -84,6 +84,6 @@ export function HyperText({
           </motion.span>
         ))}
       </AnimatePresence>
-    </div>
+    </span>
   );
 }
