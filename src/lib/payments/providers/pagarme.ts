@@ -21,6 +21,7 @@ export const pagarmeProvider: PaymentProvider = {
       organizerRecipientId: input.pagarmeRecipientId,
       buyerName: input.buyerName,
       buyerEmail: input.buyerEmail,
+      buyerDocument: input.buyerCpf,
       statusUrl: input.statusUrl,
       metadata: input.metadata,
     });

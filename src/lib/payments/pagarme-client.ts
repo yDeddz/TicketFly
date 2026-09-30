@@ -148,6 +148,7 @@ export async function pagarmeCreateCheckout(args: {
   organizerRecipientId: string;
   buyerName: string;
   buyerEmail: string;
+  buyerDocument?: string | null;
   statusUrl: string;
   metadata: Record<string, unknown>;
 }) {
@@ -177,6 +178,9 @@ export async function pagarmeCreateCheckout(args: {
         name: args.buyerName,
         email: args.buyerEmail,
         type: "individual",
+        ...(args.buyerDocument
+          ? { document: args.buyerDocument, document_type: "CPF" }
+          : {}),
       },
       payments: [
         {

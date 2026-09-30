@@ -150,6 +150,7 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
         organizerRecipientId: input.pagarmeRecipientId,
         buyerName: input.buyerName,
         buyerEmail: input.buyerEmail,
+        buyerDocument: input.buyerCpf,
         statusUrl: buyerUrl,
         metadata: {
           payment_id: reservation.payment_id,

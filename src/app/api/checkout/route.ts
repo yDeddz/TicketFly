@@ -279,6 +279,7 @@ export async function POST(request: Request) {
       marketplaceFeeCents,
       buyerName,
       buyerEmail,
+      buyerCpf: input.data.buyerCpf,
       buyerUserEmail: user?.email ?? null,
       statusUrl,
       metadata: {

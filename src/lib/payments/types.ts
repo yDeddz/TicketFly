@@ -14,6 +14,7 @@ export type CreateCheckoutInput = {
   marketplaceFeeCents: number;
   buyerName: string;
   buyerEmail: string;
+  buyerCpf?: string | null;
   buyerUserEmail?: string | null;
   statusUrl: string;
   metadata: Record<string, unknown>;

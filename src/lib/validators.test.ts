@@ -19,9 +19,21 @@ describe("checkoutSchema", () => {
       batchId: BATCH_ID,
       buyerName: "Ana Teste",
       buyerEmail: "ana@example.com",
+      buyerCpf: "390.533.447-05",
       insuranceSelected: false,
     });
     expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.buyerCpf).toBe("39053344705");
+  });
+
+  it("rejects an invalid CPF", () => {
+    const parsed = checkoutSchema.safeParse({
+      batchId: BATCH_ID,
+      buyerName: "Ana Teste",
+      buyerEmail: "ana@example.com",
+      buyerCpf: "111.111.111-11",
+    });
+    expect(parsed.success).toBe(false);
   });
 });
 

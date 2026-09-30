@@ -9,7 +9,7 @@ import {
   DEFAULT_FEE_CONTRACT,
   type FeeContract,
 } from "@/lib/fees";
-import { formatCurrency } from "@/lib/format";
+import { formatCpfCnpjInput, formatCurrency } from "@/lib/format";
 import type { PaymentProviderName } from "@/lib/payments/types";
 import { checkoutSchema } from "@/lib/validators";
 import type { TicketBatch } from "@/types/domain";
@@ -47,6 +47,7 @@ export function CheckoutForm({
   const [batchId, setBatchId] = useState(batches[0]?.id ?? "");
   const [buyerName, setBuyerName] = useState(initialBuyerName);
   const [buyerEmail, setBuyerEmail] = useState(initialBuyerEmail);
+  const [buyerCpf, setBuyerCpf] = useState("");
   const [insuranceSelected, setInsuranceSelected] = useState(false);
   const [showCoverages, setShowCoverages] = useState(false);
   const [couponCode, setCouponCode] = useState(initialCouponCode.toUpperCase());
@@ -136,6 +137,7 @@ export function CheckoutForm({
         batchId,
         buyerName,
         buyerEmail,
+        buyerCpf,
         insuranceSelected,
         couponCode: appliedCoupon?.code || couponCode.trim() || undefined,
         promoterCode: promoterCode || undefined,
@@ -250,6 +252,18 @@ export function CheckoutForm({
             value={buyerEmail}
             onChange={(e) => setBuyerEmail(e.target.value)}
             placeholder="Para acessar o ingresso"
+            className="rounded-xl border border-white/15 bg-black/30 px-4 py-3 text-white outline-none focus:border-[#ff1493]/50"
+          />
+        </label>
+        <label className="grid gap-1.5 text-sm">
+          <span className="font-medium">CPF</span>
+          <input
+            required
+            inputMode="numeric"
+            autoComplete="off"
+            value={buyerCpf}
+            onChange={(e) => setBuyerCpf(formatCpfCnpjInput(e.target.value.replace(/\D/g, "").slice(0, 11)))}
+            placeholder="000.000.000-00"
             className="rounded-xl border border-white/15 bg-black/30 px-4 py-3 text-white outline-none focus:border-[#ff1493]/50"
           />
         </label>
@@ -381,7 +395,7 @@ export function CheckoutForm({
       ) : null}
 
       <button
-        disabled={!batchId || loading || !buyerName.trim() || !buyerEmail.trim()}
+        disabled={!batchId || loading || !buyerName.trim() || !buyerEmail.trim() || buyerCpf.replace(/\D/g, "").length !== 11}
         className="neon-button flex min-h-[3.25rem] items-center justify-center gap-2 rounded-full px-4 py-4 font-black disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}

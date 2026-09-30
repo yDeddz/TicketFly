@@ -101,6 +101,7 @@ export const checkoutSchema = z.object({
     .email("E-mail inválido")
     .max(160)
     .refine((email) => !email.endsWith("@checkout.ticketfly.app"), "Informe um e-mail real"),
+  buyerCpf: cpfSchema,
   promoterCode: z.string().trim().max(40).optional().or(z.literal("")),
   couponCode: z.string().trim().max(40).optional().or(z.literal("")),
   insuranceSelected: z.boolean().optional().default(false),
