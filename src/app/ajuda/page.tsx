@@ -21,7 +21,19 @@ export default function AjudaPage() {
         className="pb-10 pt-10 sm:pt-14"
       />
       <p className="mx-auto max-w-3xl px-4 pb-16 text-center text-sm text-white/50">
-        Organiza eventos?{" "}
+        Regras de compra, dados e devolução:{" "}
+        <Link href="/termos" className="font-semibold text-[#ff9ed2] hover:text-white">
+          Termos
+        </Link>
+        {", "}
+        <Link href="/privacidade" className="font-semibold text-[#ff9ed2] hover:text-white">
+          Privacidade
+        </Link>
+        {" e "}
+        <Link href="/reembolso" className="font-semibold text-[#ff9ed2] hover:text-white">
+          Reembolso
+        </Link>
+        . Organiza eventos?{" "}
         <Link href="/parceiros#ajuda" className="font-semibold text-[#ff9ed2] hover:text-white">
           Ajuda para parceiros
         </Link>

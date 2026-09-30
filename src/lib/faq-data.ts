@@ -86,7 +86,7 @@ export const faqData: FAQData = {
     {
       question: "Como solicitar o reembolso de um ingresso?",
       answer:
-        "A política depende do evento e das regras do organizador. Em geral, solicitações passam pelo organizador ou pela operação TicketFly. Se você contratou a Proteção de Compra, use os casos cobertos pelo seguro. Cancelamentos e reembolsos aprovados refletem no status do ingresso.",
+        "Não há pedido automático. Sem Proteção de Compra marcada no checkout, desistência, no-show, atraso, trânsito, clima ou mudança de planos não geram reembolso. Com a Proteção, a TicketFly analisa só a lista e os comprovantes de /reembolso. Envie um e-mail para suporte@ticketfly.app. O arrependimento de 7 dias está na mesma página. Cancelamento do evento pelo organizador é outro fluxo.",
     },
     {
       question: "Quanto tempo leva para o pagamento ser confirmado?",
@@ -96,7 +96,7 @@ export const faqData: FAQData = {
     {
       question: "Posso cancelar minha compra?",
       answer:
-        "Depende da política do evento e se o ingresso já foi usado no check-in. Com Proteção de Compra, imprevistos cobertos podem gerar reembolso. Sem seguro, o cancelamento fica a critério do organizador e das regras do evento.",
+        "Só nos casos de /reembolso: arrependimento de 7 dias com ingresso sem check-in e evento começando depois dessa janela, Proteção de Compra com comprovante aceito, ou cancelamento do evento pelo organizador. Check-in feito encerra o pedido.",
     },
   ],
   seguranca: [
@@ -111,9 +111,9 @@ export const faqData: FAQData = {
         "O QR Code identifica o seu ingresso na validação. A equipe do evento escaneia na porta; se estiver pago e ainda não utilizado, a entrada é liberada. Após o check-in, o mesmo código não vale novamente.",
     },
     {
-      question: "O que é o Seguro Compra Protegida?",
+      question: "O que é a Proteção de Compra?",
       answer:
-        "É a Proteção de Compra opcional no checkout. Cobre imprevistos como doença/COVID-19, acidente pessoal, furto de documentos, falha no transporte público, óbito de familiar e compromisso profissional ou judicial, conforme as condições do seguro.",
+        "É um opcional do checkout, não uma apólice de seguradora. Custa R$ 4,99 em ingressos de até R$ 120,00 e R$ 8,99 acima disso. A lista fechada e os comprovantes estão em /reembolso.",
     },
     {
       question: "Como evitar golpes na compra de ingressos?",
@@ -255,7 +255,7 @@ export const faqData: FAQData = {
     {
       question: "O que acontece se o evento for cancelado?",
       answer:
-        "Em cancelamento, o organizador e a TicketFly orientam o fluxo de reembolso ou remarcação. Ingressos cancelados deixam de ser válidos no check-in e o status é atualizado em Meus Ingressos.",
+        "Em cancelamento do evento, o organizador e a TicketFly tratam a devolução do ingresso. Isso não é pedido de Proteção de Compra. As regras do comprador estão em /reembolso. Ingressos cancelados deixam de valer no check-in.",
     },
     {
       question: "Posso trocar meu ingresso por outro lote?",
