@@ -1,7 +1,6 @@
 import Link from "next/link";
+import { Check, Circle } from "lucide-react";
 
-import { OpsSetupList } from "@/components/ops-setup-list";
-import { StatCard } from "@/components/stat-card";
 import { requireApprovedOrganizer } from "@/lib/auth-guards";
 import { formatCurrency } from "@/lib/format";
 import { isOrganizerProfileComplete } from "@/lib/organizer-profile";
@@ -75,100 +74,130 @@ export default async function OrganizerDashboardPage() {
   const live = events?.filter((event) => event.status === "published").length ?? 0;
   const hasBatch = (events ?? []).some((event) => (event.ticket_batches?.length ?? 0) > 0);
   const profileComplete = isOrganizerProfileComplete(organizer);
+  const checklist = [
+    {
+      label: "Completar perfil da casa",
+      done: profileComplete,
+      href: "/organizador/perfil",
+      hint: profileComplete ? "Documento e endereço ok" : "CPF/CNPJ, CEP e telefone",
+    },
+    {
+      label: "Criar evento",
+      done: (events?.length ?? 0) > 0,
+      href: "/organizador/eventos",
+    },
+    {
+      label: "Cadastrar lote de ingresso",
+      done: hasBatch,
+      href: "/organizador/eventos",
+      hint: "Sem lote o evento não publica",
+    },
+    {
+      label: "Publicar na vitrine",
+      done: live > 0,
+      href: "/organizador/eventos",
+    },
+    {
+      label: "Testar check-in",
+      done: checkins > 0,
+      href: "/organizador/entradas",
+      hint: "Compre um ingresso de teste e valide em /checkin",
+    },
+  ];
+  const pending = checklist.filter((item) => !item.done).length;
+  const stats = [
+    { label: "Total faturado", value: formatCurrency(grossRevenue) },
+    { label: "Seu líquido", value: formatCurrency(revenue) },
+    { label: "Sua parte da taxa (6%)", value: formatCurrency(feeShare) },
+    { label: "Vendidos", value: String(paid) },
+    { label: "Cancelados/reembolsos", value: String(cancelled) },
+  ];
 
   return (
-    <div className="grid gap-8">
-      <OpsSetupList
-        title="Checklist da casa"
-        description="Feche estes itens antes de abrir a venda ao público."
-        items={[
-          {
-            label: "Completar perfil da casa",
-            done: profileComplete,
-            href: "/organizador/perfil",
-            hint: profileComplete ? "Documento e endereço ok" : "CPF/CNPJ, CEP e telefone",
-          },
-          {
-            label: "Criar evento",
-            done: (events?.length ?? 0) > 0,
-            href: "/organizador/eventos",
-          },
-          {
-            label: "Cadastrar lote de ingresso",
-            done: hasBatch,
-            href: "/organizador/eventos",
-            hint: "Sem lote o evento não publica",
-          },
-          {
-            label: "Publicar na vitrine",
-            done: live > 0,
-            href: "/organizador/eventos",
-          },
-          {
-            label: "Testar check-in",
-            done: checkins > 0,
-            href: "/organizador/entradas",
-            hint: "Compre um ingresso de teste e valide em /checkin",
-          },
-        ]}
-      />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Total faturado" value={formatCurrency(grossRevenue)} />
-        <StatCard label="Seu líquido" value={formatCurrency(revenue)} tone="pink" />
-        <StatCard label="Sua parte da taxa (6%)" value={formatCurrency(feeShare)} />
-        <StatCard label="Vendidos" value={String(paid)} />
-        <StatCard label="Cancelados/reembolsos" value={String(cancelled)} tone="light" />
-      </div>
+    <div className="grid gap-10">
+      <section>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <div>
+            <h1 className="text-lg font-semibold">Checklist da casa</h1>
+            <p className="mt-1 text-sm text-white/55">Feche estes itens antes de abrir a venda ao público.</p>
+          </div>
+          <p className="text-sm text-white/45">{pending === 0 ? "Pronto para operar" : `${pending} pendente(s)`}</p>
+        </div>
+        <ol className="mt-4 divide-y divide-white/8 border-y border-white/10">
+          {checklist.map((item) => (
+            <li key={item.label}>
+              <Link href={item.href} className="flex items-start gap-3 py-3">
+                {item.done ? (
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#ff7ec8]" />
+                ) : (
+                  <Circle className="mt-0.5 h-4 w-4 shrink-0 text-white/30" />
+                )}
+                <span>
+                  <span className={`block text-sm font-medium ${item.done ? "text-white/60" : "text-white"}`}>{item.label}</span>
+                  {item.hint ? <span className="mt-0.5 block text-xs text-white/45">{item.hint}</span> : null}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-[#ff1493]/25 bg-[#120410] p-5">
-          <h2 className="font-black">Operação de porta</h2>
-          <p className="mt-2 text-sm text-[#c9aabc]">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-6 border-y border-white/10 py-5 sm:grid-cols-3 xl:grid-cols-5">
+        {stats.map((stat) => (
+          <div key={stat.label}>
+            <dt className="text-sm text-white/50">{stat.label}</dt>
+            <dd className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="grid gap-8 sm:grid-cols-3">
+        <div>
+          <h2 className="text-base font-semibold">Operação de porta</h2>
+          <p className="mt-1 text-sm text-white/55">
             {checkins} check-ins registrados · {live} evento(s) publicado(s)
           </p>
-          <Link href="/organizador/entradas" className="mt-4 inline-flex text-sm font-bold text-[#ff7ec8] hover:text-white">
+          <Link href="/organizador/entradas" className="mt-3 inline-flex text-sm font-medium text-[#ff7ec8] hover:text-white">
             Abrir gestão de entrada →
           </Link>
         </div>
-        <div className="rounded-2xl border border-[#ff1493]/25 bg-[#120410] p-5">
-          <h2 className="font-black">Eventos</h2>
-          <p className="mt-2 text-sm text-[#c9aabc]">Crie noites, lotes e publique para vender.</p>
-          <Link href="/organizador/eventos" className="mt-4 inline-flex text-sm font-bold text-[#ff7ec8] hover:text-white">
+        <div>
+          <h2 className="text-base font-semibold">Eventos</h2>
+          <p className="mt-1 text-sm text-white/55">Crie noites, lotes e publique para vender.</p>
+          <Link href="/organizador/eventos" className="mt-3 inline-flex text-sm font-medium text-[#ff7ec8] hover:text-white">
             Gerenciar eventos →
           </Link>
         </div>
-        <div className="rounded-2xl border border-[#ff1493]/25 bg-[#120410] p-5">
-          <h2 className="font-black">Reembolsos</h2>
-          <p className="mt-2 text-sm text-[#c9aabc]">Cancele ingressos e devolva valores com rastreio.</p>
-          <Link href="/organizador/reembolsos" className="mt-4 inline-flex text-sm font-bold text-[#ff7ec8] hover:text-white">
+        <div>
+          <h2 className="text-base font-semibold">Reembolsos</h2>
+          <p className="mt-1 text-sm text-white/55">Cancele ingressos e devolva valores com rastreio.</p>
+          <Link href="/organizador/reembolsos" className="mt-3 inline-flex text-sm font-medium text-[#ff7ec8] hover:text-white">
             Ver reembolsos →
           </Link>
         </div>
       </div>
 
-      <section className="rounded-2xl border border-[#ff1493]/25 bg-[#120410]">
-        <div className="border-b border-white/10 px-5 py-4">
-          <h2 className="font-black">Próximos / recentes</h2>
-        </div>
-        <div className="divide-y divide-white/8">
+      <section>
+        <h2 className="text-base font-semibold">Próximos / recentes</h2>
+        <div className="mt-3 divide-y divide-white/8 border-t border-white/10">
           {(events ?? []).slice(0, 6).map((event) => {
             const counts = recentCounts.get(event.id) ?? { sold: 0, scanned: 0 };
             return (
-              <div key={event.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+              <div key={event.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div>
-                  <strong>{event.title}</strong>
+                  <strong className="font-medium">{event.title}</strong>
                   <p className="text-sm text-white/50">
                     {statusLabels[event.status] ?? event.status} · {counts.sold} vendidos · {counts.scanned} na porta
                   </p>
                 </div>
-                <Link href="/organizador/eventos" className="text-sm font-bold text-[#ff7ec8]">
+                <Link href="/organizador/eventos" className="text-sm font-medium text-[#ff7ec8]">
                   Detalhes
                 </Link>
               </div>
             );
           })}
           {(events?.length ?? 0) === 0 ? (
-            <p className="px-5 py-8 text-sm text-white/45">Nenhum evento ainda. Crie o primeiro em Eventos.</p>
+            <p className="py-8 text-sm text-white/45">Nenhum evento ainda. Crie o primeiro em Eventos.</p>
           ) : null}
         </div>
       </section>

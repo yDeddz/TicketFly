@@ -36,37 +36,37 @@ export default async function OrganizerEntryPage() {
     : { data: [] as never[] };
 
   return (
-    <div className="grid gap-8">
+    <div className="grid gap-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black">Gestão de entrada</h2>
-          <p className="mt-1 text-sm text-[#c9aabc]">
+          <h1 className="text-2xl font-semibold tracking-tight">Gestão de entrada</h1>
+          <p className="mt-1 text-sm text-white/55">
             Visão da porta: quem ainda pode entrar e quem já validou o QR.
           </p>
         </div>
-        <Link href="/checkin" className="rounded-full bg-[#ff1493] px-4 py-2.5 text-sm font-bold text-white">
+        <Link href="/checkin" className="rounded-full bg-[#ff1493] px-4 py-2.5 text-sm font-semibold text-white">
           Abrir scanner QR
         </Link>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         {(events ?? []).map((event) => {
           const tickets = event.tickets ?? [];
           const paid = tickets.filter((t) => t.status === "paid").length;
           const used = tickets.filter((t) => t.status === "used").length;
           const validScans = (event.checkins ?? []).filter((c) => c.result === "valid").length;
           return (
-            <div key={event.id} className="rounded-2xl border border-[#ff1493]/25 bg-[#120410] p-5">
+            <div key={event.id} className="border-t border-white/10 pt-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <strong className="text-lg">{event.title}</strong>
+                  <strong className="font-medium">{event.title}</strong>
                   <p className="text-sm text-white/50">{formatDateTime(event.starts_at)} · {event.status}</p>
                 </div>
-                <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-white/60">
+                <span className="shrink-0 text-xs text-white/50">
                   {used}/{used + paid} na casa
                 </span>
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+              <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
                 <Metric label="QR livres" value={String(paid)} />
                 <Metric label="Já usados" value={String(used)} />
                 <Metric label="Scans OK" value={String(validScans)} />
@@ -79,17 +79,15 @@ export default async function OrganizerEntryPage() {
         ) : null}
       </div>
 
-      <section className="rounded-2xl border border-[#ff1493]/25 bg-[#120410]">
-        <div className="border-b border-white/10 px-5 py-4">
-          <h3 className="font-black">Fila recente de ingressos pagos/usados</h3>
-        </div>
-        <div className="divide-y divide-white/8">
+      <section>
+        <h2 className="text-base font-semibold">Fila recente de ingressos pagos/usados</h2>
+        <div className="mt-3 divide-y divide-white/8 border-t border-white/10">
           {(recentTickets ?? []).map((ticket) => {
             const event = Array.isArray(ticket.events) ? ticket.events[0] : ticket.events;
             return (
-              <div key={ticket.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+              <div key={ticket.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div>
-                  <strong>{ticket.buyer_name}</strong>
+                  <strong className="font-medium">{ticket.buyer_name}</strong>
                   <p className="text-xs text-white/45">{event?.title}</p>
                 </div>
                 <div className="text-right">
@@ -102,7 +100,7 @@ export default async function OrganizerEntryPage() {
             );
           })}
           {(recentTickets?.length ?? 0) === 0 ? (
-            <p className="px-5 py-8 text-sm text-white/45">Sem movimentação de entrada ainda.</p>
+            <p className="py-8 text-sm text-white/45">Sem movimentação de entrada ainda.</p>
           ) : null}
         </div>
       </section>
@@ -112,8 +110,8 @@ export default async function OrganizerEntryPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/8 bg-black/25 px-3 py-3">
-      <strong className="block text-xl text-white">{value}</strong>
+    <div>
+      <strong className="block text-lg font-semibold tabular-nums text-white">{value}</strong>
       <span className="text-xs text-white/45">{label}</span>
     </div>
   );

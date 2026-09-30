@@ -160,11 +160,11 @@ export function OrganizerCouponsManager() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black">Cupons de desconto</h2>
-          <p className="mt-1 text-sm text-[#c9aabc]">
+          <h1 className="text-2xl font-semibold tracking-tight">Cupons de desconto</h1>
+          <p className="mt-1 text-sm text-white/55">
             Crie cupons para a organização, um evento específico ou vinculado a um promotor.
           </p>
         </div>
@@ -315,7 +315,7 @@ export function OrganizerCouponsManager() {
       ) : null}
 
       <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#120410]">
-        <table className="min-w-full text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="text-xs uppercase text-white/40">
             <tr>
               <th className="px-4 py-3">Código</th>

@@ -45,32 +45,39 @@ export default async function OrganizerPaymentsPage() {
 
   const partnerShare = 100 - Number(organizer.service_fee_platform_share_percent ?? 50);
 
+  const totals = [
+    { label: "Total faturado", value: formatCurrency(grossRevenue) },
+    { label: "Vendas aprovadas", value: String(paidCount) },
+    { label: "Seu líquido (ingresso + fatia taxa)", value: formatCurrency(paidNet) },
+    { label: "Sua fatia da taxa", value: formatCurrency(paidFeeShare) },
+  ];
+
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-10">
       <div>
-        <h2 className="text-2xl font-black">Pagamentos</h2>
-        <p className="mt-1 text-sm text-[#c9aabc]">
+        <h1 className="text-2xl font-semibold tracking-tight">Pagamentos</h1>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-white/55">
           A TicketFly desconta as taxas de processamento, divide a taxa de serviço{" "}
-          <strong className="text-white">50% / 50%</strong> e faz o repasse em até{" "}
-          <strong className="text-white">48 horas úteis</strong>. Veja o detalhe em{" "}
-          <Link href="/organizador/taxas" className="font-bold text-white underline">
+          <strong className="font-semibold text-white">50% / 50%</strong> e faz o repasse em até{" "}
+          <strong className="font-semibold text-white">48 horas úteis</strong>. Veja o detalhe em{" "}
+          <Link href="/organizador/taxas" className="font-semibold text-white underline">
             Taxas
           </Link>
           .
         </p>
       </div>
 
-      <div className="grid gap-4 rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-5 md:grid-cols-2">
+      <div className="grid gap-8 border-t border-white/10 pt-8 md:grid-cols-2">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-white/45">Prazo de repasse</p>
-          <p className="mt-2 text-2xl font-black text-emerald-300">48 horas úteis</p>
-          <p className="mt-2 text-sm text-white/50">
+          <h2 className="text-sm font-medium text-white/50">Prazo de repasse</h2>
+          <p className="mt-2 text-2xl font-semibold tracking-tight">48 horas úteis</p>
+          <p className="mt-2 text-sm text-white/55">
             Depois da venda aprovada, a TicketFly deposita o líquido na conta da casa.
           </p>
         </div>
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-white/45">Divisão da taxa</p>
-          <ul className="mt-3 grid gap-2 text-sm text-[#c9aabc]">
+          <h2 className="text-sm font-medium text-white/50">Divisão da taxa</h2>
+          <ul className="mt-3 grid gap-2 text-sm text-white/60">
             <li>Taxa de serviço: {organizer.fee_percent_upto_threshold ?? 12}%</li>
             <li>
               Após descontar as taxas de processamento: você {partnerShare}% · TicketFly{" "}
@@ -80,24 +87,14 @@ export default async function OrganizerPaymentsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl border border-white/10 bg-[#120410] p-5">
-          <p className="text-xs uppercase text-white/45">Total faturado</p>
-          <p className="mt-2 text-2xl font-black">{formatCurrency(grossRevenue)}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#120410] p-5">
-          <p className="text-xs uppercase text-white/45">Vendas aprovadas</p>
-          <p className="mt-2 text-2xl font-black">{paidCount}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#120410] p-5">
-          <p className="text-xs uppercase text-white/45">Seu líquido (ingresso + fatia taxa)</p>
-          <p className="mt-2 text-2xl font-black text-[#ff7ec8]">{formatCurrency(paidNet)}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#120410] p-5">
-          <p className="text-xs uppercase text-white/45">Sua fatia da taxa</p>
-          <p className="mt-2 text-2xl font-black">{formatCurrency(paidFeeShare)}</p>
-        </div>
-      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-6 border-t border-white/10 pt-8 xl:grid-cols-4">
+        {totals.map((item) => (
+          <div key={item.label}>
+            <dt className="text-sm text-white/50">{item.label}</dt>
+            <dd className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{item.value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }

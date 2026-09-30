@@ -286,11 +286,11 @@ export function OrganizerEventsManager({
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black">Eventos</h2>
-          <p className="mt-1 text-sm text-[#c9aabc]">Crie a noite, o primeiro lote e publique na vitrine.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Eventos</h1>
+          <p className="mt-1 text-sm text-white/55">Crie a noite, o primeiro lote e publique na vitrine.</p>
         </div>
         <button
           type="button"

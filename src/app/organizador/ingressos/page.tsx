@@ -38,10 +38,10 @@ export default async function OrganizerTicketsPage() {
     })) ?? [];
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-8">
       <div>
-        <h2 className="text-2xl font-black">Ingressos e QR Code</h2>
-        <p className="mt-1 text-sm text-[#c9aabc]">
+        <h1 className="text-2xl font-semibold tracking-tight">Ingressos e QR Code</h1>
+        <p className="mt-1 max-w-2xl text-sm text-white/55">
           Status profissional da porta: pago (QR livre), usado (já validado) ou cancelado/reembolsado.
         </p>
       </div>

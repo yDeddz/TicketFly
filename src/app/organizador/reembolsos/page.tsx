@@ -40,10 +40,10 @@ export default async function OrganizerRefundsPage() {
   const refunded = rows.filter((t) => t.status === "cancelled");
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-8">
       <div>
-        <h2 className="text-2xl font-black">Reembolsos</h2>
-        <p className="mt-1 text-sm text-[#c9aabc]">
+        <h1 className="text-2xl font-semibold tracking-tight">Reembolsos</h1>
+        <p className="mt-1 max-w-2xl text-sm text-white/55">
           {refunded.length} cancelado(s)/reembolsado(s). Use a ação “Reembolsar” nos ingressos ativos para
           devolver e liberar estoque.
         </p>

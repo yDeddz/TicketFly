@@ -115,9 +115,8 @@ export function TicketsOperationsTable({
 
       {message ? <AlertBanner tone={messageTone}>{message}</AlertBanner> : null}
 
-      <div className="overflow-hidden rounded-2xl border border-[#ff1493]/25 bg-[#120410]">
-        <div className="overflow-x-auto">
-          <table className="hidden min-w-full text-left text-sm md:table">
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-white/45">
               <tr>
                 <th className="px-4 py-3 font-bold">Comprador</th>
@@ -154,7 +153,7 @@ export function TicketsOperationsTable({
                       ) : null}
                     </td>
                     <td className="px-4 py-4 font-bold">{formatCurrency(ticket.amount_paid_cents)}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       {canRefund ? (
                         <button
                           type="button"
@@ -181,44 +180,6 @@ export function TicketsOperationsTable({
               ) : null}
             </tbody>
           </table>
-
-          <div className="grid gap-3 p-3 md:hidden">
-            {filtered.length === 0 ? (
-              <p className="py-6 text-center text-sm text-white/45">Nenhum ingresso encontrado.</p>
-            ) : (
-              filtered.map((ticket) => {
-                const event = Array.isArray(ticket.events) ? ticket.events[0] : ticket.events;
-                const batch = Array.isArray(ticket.ticket_batches) ? ticket.ticket_batches[0] : ticket.ticket_batches;
-                const busy = busyId === ticket.id;
-                const canRefund = ticket.status === "paid" || ticket.status === "used" || ticket.status === "pending";
-                return (
-                  <div key={ticket.id} className="rounded-xl border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <strong className="text-white">{ticket.buyer_name}</strong>
-                        <p className="text-xs text-white/50">{ticket.buyer_email}</p>
-                      </div>
-                      <TicketStatusBadge status={ticket.status} />
-                    </div>
-                    <p className="mt-2 text-sm text-white/70">{event?.title ?? "—"} · {batch?.name ?? "Lote"}</p>
-                    <p className="mt-1 font-bold">{formatCurrency(ticket.amount_paid_cents)}</p>
-                    {canRefund ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => requestRefund(ticket.id)}
-                        className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-xs font-bold text-white/80 disabled:opacity-60"
-                      >
-                        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                        Reembolsar
-                      </button>
-                    ) : null}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
       </div>
 
       <ConfirmDialog

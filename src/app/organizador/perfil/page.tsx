@@ -23,10 +23,10 @@ export default async function OrganizerProfilePage() {
   const complete = isOrganizerProfileComplete(organizer);
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-8">
       <div>
-        <h2 className="text-2xl font-black">Perfil da casa</h2>
-        <p className="mt-1 text-sm text-[#c9aabc]">
+        <h1 className="text-2xl font-semibold tracking-tight">Perfil da casa</h1>
+        <p className="mt-1 text-sm text-white/55">
           {complete
             ? "Cadastro completo."
             : "Falta documento, endereço ou telefone."}

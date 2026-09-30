@@ -1,27 +1,11 @@
 import Link from "next/link";
 
-import { BrandLogo } from "@/components/brand-logo";
-import { DashboardNav } from "@/components/dashboard-nav";
 import { OrganizerProfileForm } from "@/components/organizer-profile-form";
+import { OrganizerShell } from "@/components/organizer-shell";
 import { organizerStatusLabel } from "@/components/status-badges";
 import { loadOrganizerByUserId } from "@/lib/auth-guards";
 import { isOrganizerProfileComplete } from "@/lib/organizer-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-const nav = [
-  { href: "/organizador", label: "Dashboard" },
-  { href: "/organizador/perfil", label: "Perfil" },
-  { href: "/organizador/eventos", label: "Eventos" },
-  { href: "/organizador/promotores", label: "Promotores" },
-  { href: "/organizador/cupons", label: "Cupons" },
-  { href: "/organizador/vendas-na-entrada", label: "Bilheteria na Porta", soon: true },
-  { href: "/organizador/ingressos", label: "Ingressos / QR" },
-  { href: "/organizador/entradas", label: "Gestão de entrada" },
-  { href: "/organizador/pagamentos", label: "Pagamentos" },
-  { href: "/organizador/taxas", label: "Taxas" },
-  { href: "/organizador/reembolsos", label: "Reembolsos" },
-  { href: "/organizador/webhooks", label: "Webhooks" },
-];
 
 export default async function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient();
@@ -31,18 +15,16 @@ export default async function OrganizerLayout({ children }: { children: React.Re
 
   if (!user) {
     return (
-      <main className="mx-auto max-w-xl px-4 pb-12 pt-8">
-        <div className="rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-6">
-          <h1 className="text-2xl font-black">Painel do parceiro</h1>
-          <p className="mt-2 text-[#c9aabc]">Entre para gerenciar eventos, QR Codes e reembolsos.</p>
-          <div className="mt-5 flex gap-3">
-            <Link className="rounded-full bg-[#ff1493] px-4 py-3 text-sm font-bold text-white" href="/login">
-              Entrar
-            </Link>
-            <Link className="rounded-full border border-white/15 px-4 py-3 text-sm font-bold text-white/75" href="/parceiros">
-              Quero ser parceiro
-            </Link>
-          </div>
+      <main className="mx-auto max-w-lg px-4 py-16">
+        <h1 className="text-2xl font-semibold tracking-tight">Painel do parceiro</h1>
+        <p className="mt-2 text-sm text-white/55">Entre para gerenciar eventos, QR Codes e reembolsos.</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link className="rounded-full bg-[#ff1493] px-4 py-2.5 text-sm font-semibold text-white" href="/login">
+            Entrar
+          </Link>
+          <Link className="rounded-full border border-white/15 px-4 py-2.5 text-sm font-semibold text-white/75" href="/parceiros">
+            Quero ser parceiro
+          </Link>
         </div>
       </main>
     );
@@ -52,58 +34,36 @@ export default async function OrganizerLayout({ children }: { children: React.Re
 
   if (!organizer) {
     return (
-      <main className="mx-auto max-w-xl px-4 pb-12 pt-8">
-        <div className="rounded-2xl border border-[#ff1493]/30 bg-[#120410] p-6">
-          <h1 className="text-2xl font-black">Torne-se parceiro</h1>
-          <p className="mt-2 text-[#c9aabc]">Você ainda não tem contrato. Candidate-se para anunciar sua balada.</p>
-          <Link className="mt-5 inline-block rounded-full bg-[#ff1493] px-4 py-3 text-sm font-bold text-white" href="/parceiros#candidatura">
-            Quero ser parceiro
-          </Link>
-        </div>
+      <main className="mx-auto max-w-lg px-4 py-16">
+        <h1 className="text-2xl font-semibold tracking-tight">Torne-se parceiro</h1>
+        <p className="mt-2 text-sm text-white/55">Você ainda não tem contrato. Candidate-se para anunciar sua balada.</p>
+        <Link className="mt-6 inline-block rounded-full bg-[#ff1493] px-4 py-2.5 text-sm font-semibold text-white" href="/parceiros#candidatura">
+          Quero ser parceiro
+        </Link>
       </main>
     );
   }
 
   if (organizer.status !== "approved") {
     return (
-      <main className="mx-auto max-w-3xl px-4 pb-12 pt-8">
-        <div className="mb-6 rounded-2xl border border-amber-400/25 bg-[#120410] p-6">
-          <h1 className="text-2xl font-black">{organizer.trade_name}</h1>
-          <p className="mt-2 text-amber-100/90">
-            Status: <strong>{organizerStatusLabel(organizer.status)}</strong>. O dashboard
-            completo libera quando a TicketFly aprovar o contrato.
-          </p>
-        </div>
-        {organizer.status === "pending" ? <OrganizerProfileForm organizer={organizer} /> : null}
+      <main className="mx-auto max-w-3xl px-4 py-10">
+        <h1 className="text-2xl font-semibold tracking-tight">{organizer.trade_name}</h1>
+        <p className="mt-2 text-sm leading-6 text-white/60">
+          Status: <strong className="font-semibold text-white">{organizerStatusLabel(organizer.status)}</strong>. O dashboard
+          completo libera quando a TicketFly aprovar o contrato.
+        </p>
+        {organizer.status === "pending" ? (
+          <div className="mt-8">
+            <OrganizerProfileForm organizer={organizer} />
+          </div>
+        ) : null}
       </main>
     );
   }
 
-  const profileComplete = isOrganizerProfileComplete(organizer);
-
   return (
-    <div className="mx-auto max-w-7xl px-4 pb-16 pt-8 lg:px-6">
-      <div className="mb-6">
-        <div className="mb-3 flex items-center gap-3">
-          <BrandLogo className="h-8 w-8" href="/" variant="mark" />
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">Parceiro TicketFly</p>
-        </div>
-        <h1 className="mt-2 text-3xl font-black md:text-4xl">{organizer.trade_name}</h1>
-        <p className="mt-2 text-sm text-white/55">Vendas, porta, QR Code e reembolsos.</p>
-      </div>
-      {!profileComplete ? (
-        <p className="mb-6 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          Complete documento, endereço e telefone em{" "}
-          <Link href="/organizador/perfil" className="font-bold underline">
-            Perfil
-          </Link>
-          .
-        </p>
-      ) : null}
-      <div className="mb-8">
-        <DashboardNav items={nav} base="/organizador" />
-      </div>
+    <OrganizerShell tradeName={organizer.trade_name} profileIncomplete={!isOrganizerProfileComplete(organizer)}>
       {children}
-    </div>
+    </OrganizerShell>
   );
 }

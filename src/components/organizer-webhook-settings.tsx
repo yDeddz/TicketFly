@@ -222,7 +222,7 @@ export function OrganizerWebhookSettings() {
         <h3 className="text-lg font-black">Últimas entregas</h3>
         <p className="mt-1 text-sm text-white/45">Histórico das notificações enviadas ao seu endpoint.</p>
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+          <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="text-xs uppercase text-white/40">
               <tr>
                 <th className="px-2 py-2">Quando</th>

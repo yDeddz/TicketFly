@@ -23,17 +23,13 @@ export default async function DoorSalesPage() {
 
   if (!DOOR_SALES_ENABLED) {
     return (
-      <div className="grid max-w-2xl gap-6">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff1493]">
-            Operação presencial
-          </p>
-          <h2 className="mt-2 text-3xl font-black">Venda presencial</h2>
-        </div>
-        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-6">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">Em breve</p>
-          <h3 className="mt-2 text-xl font-black text-amber-50">Bilheteria na porta ainda não está no ar</h3>
-          <p className="mt-3 text-sm leading-6 text-amber-100/80">
+      <div className="max-w-xl">
+        <h1 className="text-2xl font-semibold tracking-tight">Venda presencial</h1>
+        <p className="mt-1 text-sm text-white/55">Operação presencial</p>
+        <div className="mt-6 border-t border-white/10 pt-6">
+          <p className="text-sm font-medium text-[#ff7ec8]">Em breve</p>
+          <h2 className="mt-1 text-lg font-semibold">Bilheteria na porta ainda não está no ar</h2>
+          <p className="mt-2 text-sm leading-6 text-white/55">
             A venda na entrada fica pausada por enquanto. Ingressos continuam na vitrine online, e a
             validação do QR segue em Gestão de entrada.
           </p>
