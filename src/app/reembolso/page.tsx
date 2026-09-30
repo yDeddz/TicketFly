@@ -104,16 +104,17 @@ export default function ReembolsoPage() {
       <LegalSection title="5. O que volta">
         <ul className="list-disc space-y-2 pl-4">
           <li>
-            <strong className="font-semibold text-white/80">Proteção aceita.</strong> Só o valor do ingresso. O valor
-            pago pela Proteção não volta: o pedido usou o que foi contratado. A taxa de serviço não volta.
+            <strong className="font-semibold text-white/80">Proteção aceita.</strong> Só o valor do ingresso, e esse
+            valor sai da parte da casa do evento. A taxa de serviço não volta. A Proteção não volta: ela é cobrada pela
+            TicketFly e não entra no repasse da casa.
           </li>
           <li>
             <strong className="font-semibold text-white/80">Proteção negada.</strong> Nada volta, inclusive o valor da
             Proteção.
           </li>
           <li>
-            <strong className="font-semibold text-white/80">Art. 49.</strong> Ingresso, taxa de serviço e Proteção, se
-            houver, nas condições do bloco acima.
+            <strong className="font-semibold text-white/80">Art. 49.</strong> Só o ingresso, nas condições do bloco
+            acima. Taxa de serviço e Proteção não voltam.
           </li>
           <li>
             <strong className="font-semibold text-white/80">Evento cancelado pelo organizador.</strong> Devolução do

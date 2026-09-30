@@ -66,8 +66,9 @@ export async function createProviderCheckout(
 export async function refundViaProvider(
   providerName: string | null | undefined,
   providerPaymentId: string,
+  options?: { amountCents: number; organizerRecipientId: string },
 ): Promise<boolean> {
   const name: PaymentProviderName =
     providerName === "asaas" || providerName === "pagarme" ? providerName : "mercado_pago";
-  return getPaymentProvider(name).refund(providerPaymentId);
+  return getPaymentProvider(name).refund(providerPaymentId, options);
 }

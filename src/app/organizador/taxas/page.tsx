@@ -39,11 +39,18 @@ export default async function OrganizerFeesPage() {
     service_fee_platform_share_percent: platformShare,
   });
   const exampleCharge = example.totalCents;
-  const exampleSplit = splitAfterStone({
+  const pixSplit = splitAfterStone({
     ticketPriceCents: EXAMPLE_PRICE_CENTS,
     feeCents: example.feeCents,
     insuranceCents: 0,
     stoneCents: stoneProcessingCents(exampleCharge, "pix"),
+    platformSharePercent: platformShare,
+  });
+  const cardSplit = splitAfterStone({
+    ticketPriceCents: EXAMPLE_PRICE_CENTS,
+    feeCents: example.feeCents,
+    insuranceCents: 0,
+    stoneCents: stoneProcessingCents(exampleCharge, "credit_card"),
     platformSharePercent: platformShare,
   });
 
@@ -104,12 +111,15 @@ export default async function OrganizerFeesPage() {
       <section className="border-t border-white/10 pt-8">
         <h2 className="text-base font-semibold">Exemplo — ingresso de {formatCurrency(EXAMPLE_PRICE_CENTS)}</h2>
         <ul className="mt-3 grid gap-2 text-sm text-white/60">
-          <li>Processamento Pix (0,99% sobre a cobrança): {formatCurrency(exampleSplit.stoneCents)} descontado da taxa</li>
           <li>
-            Taxa de serviço ({example.feePercent}%): {formatCurrency(example.feeCents)} − Pix ={" "}
-            {formatCurrency(example.feeCents - exampleSplit.stoneCents)} → você{" "}
-            {formatCurrency(exampleSplit.partnerShareCents)} · TicketFly {formatCurrency(exampleSplit.platformShareCents)}
+            Pix (0,99%): {formatCurrency(pixSplit.stoneCents)} descontado → você{" "}
+            {formatCurrency(pixSplit.partnerShareCents)} · TicketFly {formatCurrency(pixSplit.platformShareCents)}
           </li>
+          <li>
+            Cartão à vista (3,79% + R$ 0,40): {formatCurrency(cardSplit.stoneCents)} descontado → você{" "}
+            {formatCurrency(cardSplit.partnerShareCents)} · TicketFly {formatCurrency(cardSplit.platformShareCents)}
+          </li>
+          <li>Taxa de serviço antes do processamento: {formatCurrency(example.feeCents)}</li>
           <li>Comprador paga ingresso + taxa de serviço: {formatCurrency(example.totalCents)}</li>
         </ul>
       </section>

@@ -4,7 +4,9 @@ import {
   computePurchaseInsurance,
   computeServiceFee,
   DEFAULT_FEE_CONTRACT,
+  splitAfterStone,
   splitServiceFee,
+  stoneProcessingCents,
 } from "@/lib/fees";
 
 describe("computeServiceFee", () => {
@@ -28,6 +30,48 @@ describe("splitServiceFee", () => {
       platformShareCents: 600,
       partnerShareCents: 600,
     });
+  });
+});
+
+describe("splitAfterStone", () => {
+  it("subtracts Pix from the service fee before the 50/50 and keeps insurance with TicketFly", () => {
+    const ticket = 10_000;
+    const fee = 1_200;
+    const insurance = 499;
+    const amount = ticket + fee + insurance;
+    const stone = stoneProcessingCents(amount, "pix");
+    const split = splitAfterStone({
+      ticketPriceCents: ticket,
+      feeCents: fee,
+      insuranceCents: insurance,
+      stoneCents: stone,
+    });
+
+    expect(stone).toBe(116);
+    expect(split.platformShareCents + split.partnerShareCents).toBe(fee - stone);
+    expect(split.organizerAmountCents).toBe(ticket + split.partnerShareCents);
+    expect(split.platformAmountCents).toBe(split.platformShareCents + insurance + stone);
+    expect(split.ticketRefundCents).toBe(ticket);
+    expect(split.organizerAmountCents + split.platformAmountCents).toBe(amount);
+  });
+
+  it("subtracts card MDR plus antifraud before the 50/50", () => {
+    const ticket = 10_000;
+    const fee = 1_200;
+    const insurance = 499;
+    const amount = ticket + fee + insurance;
+    const stone = stoneProcessingCents(amount, "credit_card");
+    const split = splitAfterStone({
+      ticketPriceCents: ticket,
+      feeCents: fee,
+      insuranceCents: insurance,
+      stoneCents: stone,
+    });
+
+    expect(stone).toBe(483);
+    expect(split.platformShareCents + split.partnerShareCents).toBe(fee - stone);
+    expect(split.platformAmountCents).toBe(split.platformShareCents + insurance + stone);
+    expect(split.organizerAmountCents + split.platformAmountCents).toBe(amount);
   });
 });
 

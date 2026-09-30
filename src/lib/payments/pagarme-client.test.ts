@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildPagarmeSplit } from "@/lib/payments/pagarme-client";
+import { buildPagarmeSplit, pagarmeTicketRefundBody } from "@/lib/payments/pagarme-client";
 import { matchRecipientByDocument, recipientLinkBlock } from "@/lib/payments/stone-recipient";
 
 describe("buildPagarmeSplit", () => {
@@ -17,6 +17,26 @@ describe("buildPagarmeSplit", () => {
       { amount: 600, recipient_id: "rp_ticketfly" },
     ]);
     expect(split.reduce((sum, rule) => sum + rule.amount, 0)).toBe(11_200);
+  });
+});
+
+describe("pagarmeTicketRefundBody", () => {
+  it("refunds only the ticket from the venue recipient", () => {
+    expect(pagarmeTicketRefundBody({ amountCents: 10_000, organizerRecipientId: "rp_club" })).toEqual({
+      amount: 10_000,
+      split: [
+        {
+          amount: 10_000,
+          recipient_id: "rp_club",
+          type: "flat",
+          options: {
+            charge_processing_fee: false,
+            charge_remainder_fee: false,
+            liable: true,
+          },
+        },
+      ],
+    });
   });
 });
 

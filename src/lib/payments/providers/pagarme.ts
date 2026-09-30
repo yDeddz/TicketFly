@@ -22,6 +22,7 @@ export const pagarmeProvider: PaymentProvider = {
       buyerName: input.buyerName,
       buyerEmail: input.buyerEmail,
       buyerDocument: input.buyerCpf,
+      paymentMethod: input.paymentMethod ?? "pix",
       statusUrl: input.statusUrl,
       metadata: input.metadata,
     });
@@ -34,9 +35,10 @@ export const pagarmeProvider: PaymentProvider = {
     };
   },
 
-  async refund(providerPaymentId): Promise<boolean> {
+  async refund(providerPaymentId, options): Promise<boolean> {
+    if (!options || options.amountCents <= 0 || !options.organizerRecipientId) return false;
     try {
-      await pagarmeRefundCharge(providerPaymentId);
+      await pagarmeRefundCharge(providerPaymentId, options);
       return true;
     } catch {
       return false;

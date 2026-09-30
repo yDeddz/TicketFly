@@ -48,6 +48,7 @@ export function CheckoutForm({
   const [buyerName, setBuyerName] = useState(initialBuyerName);
   const [buyerEmail, setBuyerEmail] = useState(initialBuyerEmail);
   const [buyerCpf, setBuyerCpf] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card" | "">("");
   const [insuranceSelected, setInsuranceSelected] = useState(false);
   const [showCoverages, setShowCoverages] = useState(false);
   const [couponCode, setCouponCode] = useState(initialCouponCode.toUpperCase());
@@ -139,6 +140,7 @@ export function CheckoutForm({
         buyerEmail,
         buyerCpf,
         insuranceSelected,
+        paymentMethod,
         couponCode: appliedCoupon?.code || couponCode.trim() || undefined,
         promoterCode: promoterCode || undefined,
       });
@@ -387,6 +389,34 @@ export function CheckoutForm({
         </div>
       ) : null}
 
+      <div className="grid gap-2">
+        <p className="text-sm font-medium">Como vai pagar</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setPaymentMethod("pix")}
+            className={`rounded-xl border p-4 text-left ${
+              paymentMethod === "pix"
+                ? "border-[#ff1493]/70 bg-[#ff1493]/12"
+                : "border-white/10 bg-black/20 hover:border-white/25"
+            }`}
+          >
+            <span className="text-sm font-bold">Pix</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentMethod("credit_card")}
+            className={`rounded-xl border p-4 text-left ${
+              paymentMethod === "credit_card"
+                ? "border-[#ff1493]/70 bg-[#ff1493]/12"
+                : "border-white/10 bg-black/20 hover:border-white/25"
+            }`}
+          >
+            <span className="text-sm font-bold">Cartão à vista</span>
+          </button>
+        </div>
+      </div>
+
       {error ? <p className="text-sm font-medium text-[#ff6aa9]">{error}</p> : null}
       {message ? (
         <p className="rounded-lg border border-[#ff1493]/25 bg-[#ff1493]/10 p-3 text-sm text-[#ffb1d5]">
@@ -395,7 +425,14 @@ export function CheckoutForm({
       ) : null}
 
       <button
-        disabled={!batchId || loading || !buyerName.trim() || !buyerEmail.trim() || buyerCpf.replace(/\D/g, "").length !== 11}
+        disabled={
+          !batchId ||
+          loading ||
+          !buyerName.trim() ||
+          !buyerEmail.trim() ||
+          buyerCpf.replace(/\D/g, "").length !== 11 ||
+          !paymentMethod
+        }
         className="neon-button flex min-h-[3.25rem] items-center justify-center gap-2 rounded-full px-4 py-4 font-black disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}

@@ -52,6 +52,48 @@ export function splitServiceFee(
   };
 }
 
+/** Stone pass-through on the charged amount. Pix is exact; card is the published floor plus antifraud. */
+export const STONE_PIX_RATE_BPS = 99;
+export const STONE_CARD_RATE_BPS = 379;
+export const STONE_CARD_FIXED_CENTS = 40;
+
+export function stoneProcessingCents(chargeCents: number, method: "pix" | "credit_card" = "pix"): number {
+  if (chargeCents <= 0) return 0;
+  const variable =
+    method === "credit_card"
+      ? Math.round((chargeCents * STONE_CARD_RATE_BPS) / 10_000) + STONE_CARD_FIXED_CENTS
+      : Math.round((chargeCents * STONE_PIX_RATE_BPS) / 10_000);
+  return Math.min(chargeCents, variable);
+}
+
+export type ChargeSplit = FeeShareSplit & {
+  stoneCents: number;
+  organizerAmountCents: number;
+  platformAmountCents: number;
+  ticketRefundCents: number;
+};
+
+/** Subtract Stone from the service fee, then split what remains. Insurance stays entirely with TicketFly. */
+export function splitAfterStone(args: {
+  ticketPriceCents: number;
+  feeCents: number;
+  insuranceCents: number;
+  stoneCents: number;
+  platformSharePercent?: number;
+}): ChargeSplit {
+  const amountCents = args.ticketPriceCents + args.feeCents + args.insuranceCents;
+  const stoneCents = Math.min(Math.max(0, args.stoneCents), Math.max(0, args.feeCents));
+  const share = splitServiceFee(args.feeCents - stoneCents, args.platformSharePercent);
+  const organizerAmountCents = args.ticketPriceCents + share.partnerShareCents;
+  return {
+    ...share,
+    stoneCents,
+    organizerAmountCents,
+    platformAmountCents: amountCents - organizerAmountCents,
+    ticketRefundCents: args.ticketPriceCents,
+  };
+}
+
 export function computePurchaseInsurance(
   priceCents: number,
   thresholdCents: number = INSURANCE_THRESHOLD_CENTS,

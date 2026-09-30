@@ -1,4 +1,5 @@
 import { appUrl } from "@/lib/env";
+import { splitAfterStone, stoneProcessingCents } from "@/lib/fees";
 import {
   pagarmeCreateCheckout,
   PagarmeRequestError,
@@ -140,17 +141,40 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
   let checkoutUrl = localPayment.checkout_url;
 
   try {
+    let shareUpdate: {
+      platform_fee_share_cents: number;
+      partner_fee_share_cents: number;
+      net_amount_cents: number;
+    } | null = null;
+
     if (!providerPreferenceId || !checkoutUrl) {
+      const platformSharePercent =
+        reservation.fee_cents > 0
+          ? Math.round((reservation.platform_share_cents * 100) / reservation.fee_cents)
+          : 50;
+      const split = splitAfterStone({
+        ticketPriceCents: reservation.ticket_price_cents,
+        feeCents: reservation.fee_cents,
+        insuranceCents: 0,
+        stoneCents: stoneProcessingCents(reservation.amount_cents, input.paymentMethod),
+        platformSharePercent,
+      });
+      shareUpdate = {
+        platform_fee_share_cents: split.platformShareCents,
+        partner_fee_share_cents: split.partnerShareCents,
+        net_amount_cents: split.organizerAmountCents,
+      };
       const checkout = await pagarmeCreateCheckout({
         paymentId: reservation.payment_id,
         ticketId: reservation.ticket_id,
         eventTitle: `${reservation.event_title} · ${reservation.batch_name}`,
         amountCents: reservation.amount_cents,
-        organizerAmountCents: reservation.net_amount_cents,
+        organizerAmountCents: split.organizerAmountCents,
         organizerRecipientId: input.pagarmeRecipientId,
         buyerName: input.buyerName,
         buyerEmail: input.buyerEmail,
         buyerDocument: input.buyerCpf,
+        paymentMethod: input.paymentMethod,
         statusUrl: buyerUrl,
         metadata: {
           payment_id: reservation.payment_id,
@@ -172,6 +196,7 @@ export async function createOrResumeDoorSale(input: DoorSaleInput) {
         provider_preference_id: providerPreferenceId,
         provider_payment_id: providerPaymentId,
         checkout_url: checkoutUrl,
+        ...(shareUpdate ?? {}),
         raw_payload: {
           source: "door_sale",
           provider_state: "created",

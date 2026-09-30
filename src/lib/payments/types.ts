@@ -15,6 +15,7 @@ export type CreateCheckoutInput = {
   buyerName: string;
   buyerEmail: string;
   buyerCpf?: string | null;
+  paymentMethod?: "pix" | "credit_card";
   buyerUserEmail?: string | null;
   statusUrl: string;
   metadata: Record<string, unknown>;
@@ -34,7 +35,10 @@ export type CreateCheckoutResult = {
 export type PaymentProvider = {
   name: PaymentProviderName;
   createCheckout: (input: CreateCheckoutInput) => Promise<CreateCheckoutResult>;
-  refund: (providerPaymentId: string) => Promise<boolean>;
+  refund: (
+    providerPaymentId: string,
+    options?: { amountCents: number; organizerRecipientId: string },
+  ) => Promise<boolean>;
 };
 
 export type OrganizerPaymentConnection = {

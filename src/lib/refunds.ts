@@ -49,11 +49,28 @@ export async function refundTicketLocally(args: {
   if (paymentId) {
     const { data: payment } = await admin
       .from("payments")
-      .select("id,status,provider,provider_payment_id,amount_cents")
+      .select("id,status,provider,provider_payment_id,event_id,net_amount_cents,partner_fee_share_cents")
       .eq("id", paymentId)
       .single();
 
     providerPaymentId = payment?.provider_payment_id ?? null;
+    const ticketCents = Math.max(0, (payment?.net_amount_cents ?? 0) - (payment?.partner_fee_share_cents ?? 0));
+
+    let organizerRecipientId: string | null = null;
+    if (payment?.provider === "pagarme" && payment.event_id) {
+      const { data: eventRow } = await admin
+        .from("events")
+        .select("organizers(pagarme_recipient_id)")
+        .eq("id", payment.event_id)
+        .maybeSingle();
+      const organizers = eventRow?.organizers as
+        | { pagarme_recipient_id?: string | null }
+        | { pagarme_recipient_id?: string | null }[]
+        | null
+        | undefined;
+      const organizer = Array.isArray(organizers) ? organizers[0] : organizers;
+      organizerRecipientId = organizer?.pagarme_recipient_id ?? null;
+    }
 
     if (
       payment &&
@@ -62,7 +79,14 @@ export async function refundTicketLocally(args: {
       canAttemptProviderRefund(payment.provider)
     ) {
       providerAttempted = true;
-      providerRefunded = await refundViaProvider(payment.provider, payment.provider_payment_id);
+      if (payment.provider === "pagarme" && (ticketCents <= 0 || !organizerRecipientId)) {
+        providerRefunded = false;
+      } else {
+        providerRefunded = await refundViaProvider(payment.provider, payment.provider_payment_id, {
+          amountCents: ticketCents,
+          organizerRecipientId: organizerRecipientId ?? "",
+        });
+      }
     }
   }
 
@@ -112,7 +136,7 @@ export function refundResultMessage(result: { partial: boolean; providerRefunded
     return "Ingresso cancelado, mas o estorno automático falhou. Confira o pagamento na conta de recebimento.";
   }
   if (result.providerRefunded) {
-    return "Reembolso processado. O valor será estornado ao comprador.";
+    return "Reembolso do ingresso processado. Taxa de serviço e Proteção de Compra não voltam.";
   }
   return "Reembolso registrado. O ingresso foi cancelado.";
 }

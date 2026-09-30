@@ -53,8 +53,9 @@ export function WithdrawalCallout() {
           dentro desses 7 dias, e o evento começa somente depois do fim dessa janela.
         </p>
         <p className="mt-2 text-white/90">
-          Nesse caso devolvemos o valor pago na cobrança: ingresso, taxa de serviço e Proteção de Compra, se ela
-          tiver sido contratada. Envie o e-mail da compra e o código do ingresso para{" "}
+          Nesse caso devolvemos só o valor do ingresso. A taxa de serviço não volta. A Proteção de Compra também não
+          volta: quem vende essa proteção é a TicketFly, e o valor dela fica com a TicketFly. Envie o e-mail da compra
+          e o código do ingresso para{" "}
           <a className="font-semibold text-white underline-offset-2 hover:underline" href={`mailto:${SUPPORT_EMAIL}`}>
             {SUPPORT_EMAIL}
           </a>

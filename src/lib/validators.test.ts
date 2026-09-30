@@ -21,6 +21,7 @@ describe("checkoutSchema", () => {
       buyerEmail: "ana@example.com",
       buyerCpf: "390.533.447-05",
       insuranceSelected: false,
+      paymentMethod: "credit_card",
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data.buyerCpf).toBe("39053344705");

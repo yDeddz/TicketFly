@@ -5,7 +5,8 @@ import { appUrl } from "@/lib/env";
 import {
   computePurchaseInsurance,
   computeServiceFee,
-  splitServiceFee,
+  splitAfterStone,
+  stoneProcessingCents,
   type FeeContract,
 } from "@/lib/fees";
 import { createProviderCheckout, resolveCheckoutProvider } from "@/lib/payments";
@@ -152,15 +153,22 @@ export async function POST(request: Request) {
   }
 
   const platformSharePercent = Number(organizer?.service_fee_platform_share_percent ?? 50);
-  const { platformShareCents, partnerShareCents } = splitServiceFee(feeCents, platformSharePercent);
-
   const insuranceSelected = Boolean(input.data.insuranceSelected);
   const insuranceCents = insuranceSelected ? computePurchaseInsurance(ticketPriceCents) : 0;
 
   const discountCents = claimed?.discount_cents ?? 0;
   const amountCents = ticketPriceCents + feeCents + insuranceCents;
-  const netAmountCents = ticketPriceCents + partnerShareCents;
-  const marketplaceFeeCents = platformShareCents + insuranceCents;
+  const split = splitAfterStone({
+    ticketPriceCents,
+    feeCents,
+    insuranceCents,
+    stoneCents: stoneProcessingCents(amountCents, input.data.paymentMethod),
+    platformSharePercent,
+  });
+  const platformShareCents = split.platformShareCents;
+  const partnerShareCents = split.partnerShareCents;
+  const netAmountCents = split.organizerAmountCents;
+  const marketplaceFeeCents = split.platformAmountCents;
   const resolvedProvider = resolveCheckoutProvider(organizer);
   if (!resolvedProvider.pagarmeRecipientId) {
     if (claimed) await admin.rpc("release_coupon_claim", { p_coupon_id: claimed.coupon_id });
@@ -280,6 +288,7 @@ export async function POST(request: Request) {
       buyerName,
       buyerEmail,
       buyerCpf: input.data.buyerCpf,
+      paymentMethod: input.data.paymentMethod,
       buyerUserEmail: user?.email ?? null,
       statusUrl,
       metadata: {

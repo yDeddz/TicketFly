@@ -149,6 +149,7 @@ export async function pagarmeCreateCheckout(args: {
   buyerName: string;
   buyerEmail: string;
   buyerDocument?: string | null;
+  paymentMethod: "pix" | "credit_card";
   statusUrl: string;
   metadata: Record<string, unknown>;
 }) {
@@ -189,7 +190,7 @@ export async function pagarmeCreateCheckout(args: {
             expires_in: 1800,
             customer_editable: true,
             billing_address_editable: true,
-            accepted_payment_methods: ["pix", "credit_card"],
+            accepted_payment_methods: [args.paymentMethod],
             success_url: args.statusUrl,
             skip_checkout_success_page: false,
             pix: { expires_in: 1800 },
@@ -210,9 +211,32 @@ export async function pagarmeCreateCheckout(args: {
   return { order, checkoutUrl };
 }
 
-export async function pagarmeRefundCharge(chargeId: string) {
+/** Partial refund taken only from the venue recipient. TicketFly's fee and insurance stay. */
+export function pagarmeTicketRefundBody(args: { amountCents: number; organizerRecipientId: string }) {
+  return {
+    amount: args.amountCents,
+    split: [
+      {
+        amount: args.amountCents,
+        recipient_id: args.organizerRecipientId,
+        type: "flat" as const,
+        options: {
+          charge_processing_fee: false,
+          charge_remainder_fee: false,
+          liable: true,
+        },
+      },
+    ],
+  };
+}
+
+export async function pagarmeRefundCharge(
+  chargeId: string,
+  args: { amountCents: number; organizerRecipientId: string },
+) {
   return pagarmeFetch(`/charges/${encodeURIComponent(chargeId)}`, {
     method: "DELETE",
+    body: JSON.stringify(pagarmeTicketRefundBody(args)),
   });
 }
 

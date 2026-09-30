@@ -105,6 +105,7 @@ export const checkoutSchema = z.object({
   promoterCode: z.string().trim().max(40).optional().or(z.literal("")),
   couponCode: z.string().trim().max(40).optional().or(z.literal("")),
   insuranceSelected: z.boolean().optional().default(false),
+  paymentMethod: z.enum(["pix", "credit_card"], { message: "Escolha Pix ou cartão" }),
 });
 
 export const promoterSchema = z.object({
